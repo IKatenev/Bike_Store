@@ -1,0 +1,22 @@
+{
+  "agents": {
+    "deepseek-flash": {
+      "enabled": true,
+      "backend": "opencode",
+      "model": "openrouter/deepseek/deepseek-v4.1-flash",
+      "effort": "none",
+      "role": "analyst",
+      "label": "DeepSeek v4.1 Flash / OpenCode",
+      "review_instructions": "Evaluate the supplied contract independently. Cite concrete files and scenarios. Do not delegate or modify files."
+    },
+    "sol-review": {
+      "enabled": false,
+      "backend": "codex-cli",
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "role": "analyst",
+      "label": "GPT-6.1 Sol independent acceptance",
+      "supports_delegate": false
+    }
+  }
+}

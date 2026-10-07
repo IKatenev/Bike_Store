@@ -1,0 +1,16 @@
+{
+  "name": "git_switch_dash_capital_c",
+  "description": "git switch -C feature force-creates a new branch — ask first",
+  "input": {
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "git switch -C feature"
+    },
+    "cwd": "/home/example-user/myproject"
+  },
+  "expect": {
+    "decision": "ask",
+    "rule": "git",
+    "reason_code": "git.branch_create"
+  }
+}

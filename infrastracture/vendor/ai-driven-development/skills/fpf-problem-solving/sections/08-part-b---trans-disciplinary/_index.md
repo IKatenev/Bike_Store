@@ -1,0 +1,45 @@
+# Part B - Trans-disciplinary Reasoning Cluster
+
+
+## Contents
+
+- [B.1 - Holon Aggregation and Part-Whole Construction](01-b-1---holon-aggregation-and-part.md) (236 lines) — Type: Part B holonic construction pattern
+- [B.1.1 - Dependency Structure and Relation Grounding](02-b-1-1---dependency-structure-and.md) (215 lines) — Type: Part B holonic construction pattern
+- [B.1.2 - Coordinate Decisions About System Aggregation and Delimitation](03-b-1-2---coordinate-decisions-about.md) (216 lines) — Type: Part B holonic construction pattern
+- [B.1.3 - Knowledge Aggregation (Γ_epist): Synthesis and Target-Scheme Compilation](04-b-1-3---knowledge-aggregation.md) (282 lines) — At a glance. Use B.1.3 to compose exact U.Episteme inputs into one knowledge aggregate while preserving provenance, conceptual fit, context, and the warrant each source actually contributes.
+- [B.1.4 - Specify Order-Sensitive or Temporal Aggregation (Γ_ctx, Γ_time)](05-b-1-4---specify-order-sensitive-or.md) (216 lines) — Type: B-family aggregation pattern
+- [B.1.5 - Gamma_method - Order-Sensitive Method Composition and Work Enactment](06-b-1-5---gamma-method---order.md) (425 lines) — Type: Part B composition and grounding pattern
+- [B.1.5.EW - Recover How Constituent Actions Enact Encompassing Work](07-b-1-5-ew---recover-how-constituent.md) (176 lines) — Use this pattern when you need to understand, perform, teach, divide or change a way of working and cannot yet explain how its constituent actions perform the encompassing work. A person knows each...
+- [B.1.5.RS - Evaluate a Constituent Method Replacement in Its Encompassing Uses](08-b-1-5-rs---evaluate-a-constituent.md) (167 lines) — Use this pattern when a constituent Method could be replaced, simplified or implemented differently and you need to know which encompassing uses remain possible. A faster check returns the same...
+- [B.1.6 - Work-Resource Aggregation](09-b-1-6---work-resource-aggregation.md) (240 lines) — Type: B-family aggregation pattern
+- [B.2 - Meta-Holon Transition - Whole Reidentification](10-b-2---meta-holon-transition---whole.md) (311 lines) — Type: Part B holonic construction pattern
+- [B.2.P - Clarify Emergence and Meta-Holon Transition (MHT) Claims](11-b-2-p---clarify-emergence-and-meta.md) (257 lines) — Type: Part B precision-restoration pattern
+- [B.2.2 - Meta-System Transition: Test the Proposed New Whole as a System](12-b-2-2---meta-system-transition-test.md) (225 lines) — Type: Part B holonic construction pattern
+- [B.2.3 - Meta-Holon Transition With Episteme Result](13-b-2-3---meta-holon-transition-with.md) (208 lines) — Type: Part B holonic construction pattern
+- [B.2.4 - Do Capability or Functioning Changes Require Whole Reidentification?](14-b-2-4---do-capability-or-functioning.md) (198 lines) — Type: Part B holonic construction pattern
+- [B.2.5 - Supervisor-Subholon Feedback Relation](15-b-2-5---supervisor-subholon-feedback.md) (237 lines) — Type: Part B holonic construction pattern
+- [B.3 - Is This Claim Supported for This Use? — Trust and Assurance Calculus](16-b-3---is-this-claim-supported-for.md) (321 lines) — Type: Foundational (B)
+- [B.3.3 — Assurance Subtypes & Levels](17-b-3-3-assurance-subtypes-levels.md) (104 lines) — Use this when. A team must decide whether the available support is enough for a particular claim and receiving use, or what a published assurance level permits a recipient to conclude. Start with...
+- [B.3.4 - Can Earlier Evidence Still Support This Use? — Evidence Decay and Epistemic Debt](18-b-3-4---can-earlier-evidence-still.md) (128 lines) — Use this when. An earlier result is being relied on now, and a changed condition or a due review may change whether it still supports the receiving claim. Begin with the relied-on use and the premise...
+- [B.3.5 - Assurance Grounding for Working-Model Relation Claims (CT2R-LOG)](19-b-3-5---assurance-grounding-for.md) (376 lines) — At a glance. Use B.3.5 when a human-facing structural relation or a collection's own belongs-to relation has been selected for an additional assurance account without exposing constructive machinery...
+- [B.4 - Coordinate Repeated Adaptation (Canonical Evolution Loop)](20-b-4---coordinate-repeated-adaptation.md) (180 lines) — Use this when. Use this pattern when repeated adaptation must keep one exact subject's current identity, an observed basis, a proposed or actual successor, the Systems and dated Work that make the...
+- [B.4.1 - Publish Candidate Routes for a Stabilized Cue (RoutedCueSet)](21-b-4-1---publish-candidate-routes-for.md) (232 lines) — Type: Architectural (A)
+- [B.5 - Choose the Next Reasoning Contribution (Canonical Reasoning Cycle)](22-b-5---choose-the-next-reasoning.md) (327 lines) — Type: Method-description pattern
+- [B.5.EA - Articulate a Working Distinction from Experience](23-b-5-ea---articulate-a-working.md) (173 lines) — Normativity: Normative unless marked informative
+- [B.5.MPC - Connect Physical, Mathematical and Computational Reasoning](24-b-5-mpc---connect-physical.md) (437 lines) — Normativity: Normative unless marked informative
+- [B.5.MPC.R - Repair a Physical-Mathematical-Computational Connection](25-b-5-mpc-r---repair-a-physical.md) (251 lines) — Normativity: Normative unless marked informative
+- [B.5.RC - Recover a Construction from Its Description](26-b-5-rc---recover-a-construction-from.md) (190 lines) — Normativity: Normative unless marked informative
+- [B.5.RA - Recover an Argument for Its Next Use](27-b-5-ra---recover-an-argument-for-its.md) (368 lines) — Normativity: Normative unless marked informative
+- [B.5.RR - Revise Reasoning After a Premise or Question Changes](28-b-5-rr---revise-reasoning-after-a.md) (184 lines) — Normativity: Normative unless marked informative
+- [B.5.FM - Construct a First Model for the Working Question](29-b-5-fm---construct-a-first-model-for.md) (250 lines) — Normativity: Normative unless marked informative
+- [B.5.TU - Construct a Working Use of an Unfamiliar Theory](30-b-5-tu---construct-a-working-use-of.md) (196 lines) — Type: Method-description pattern
+- [B.5.TC - Compare Theoretical Accounts for a Working Question](31-b-5-tc---compare-theoretical-accounts.md) (200 lines) — Type: Method-description pattern
+- [B.5.QD - Develop a New Question from a Result or Construction](32-b-5-qd---develop-a-new-question-from.md) (214 lines) — Type: Method-description pattern
+- [B.5.QD.CF - Reformulate a Problem by Examining Its Conflicting Assumptions](33-b-5-qd-cf---reformulate-a-problem-by.md) (197 lines) — Normativity: Normative
+- [B.5.1 - Coordinate Development States: Explore → Shape → Evidence → Operate](34-b-5-1---coordinate-development-states.md) (59 lines) — Use this state model when a development project needs a shared account of whether a U.Episteme or U.System is being explored, shaped, evaluated or operated. The practical gain is to make the current...
+- [B.5.2 - Generate and Compare Candidate Explanations (Abductive Loop)](35-b-5-2---generate-and-compare.md) (323 lines) — Type: Architectural (A)
+- [B.5.2.0 - Question Form for Entering Abduction (U.AbductivePrompt)](36-b-5-2-0---question-form-for-entering.md) (184 lines) — Type: Definitional (D)
+- [B.5.2.1 - Instrument Abductive Hypothesis Generation with Novelty–Quality–Diversity (NQD)](37-b-5-2-1---instrument-abductive.md) (176 lines) — Status. Normative binding to B.5.2 Abductive Loop. The local NQD-Generate Method in §4, or an equivalent declared generator, constructs the candidates. C.18 supplies generation, archive and front...
+- [B.5.3 - Interpret Domain Vocabulary for an FPF Claim (Domain-Concept Bridge)](38-b-5-3---interpret-domain-vocabulary.md) (96 lines) — FPF keeps a small set of admitted U-kinds, ontics, slot relations, mechanisms, characteristics, methods, work values, epistemes, and publication-use relations. Working domains use their own words. A...
+- [B.5.4 - Recognize a Reusable Concept in a Concrete Situation](39-b-5-4---recognize-a-reusable-concept.md) (121 lines) — Type: Method-description pattern
+- [B.5.PI - Initiate Inquiry from Ongoing Work](40-b-5-pi---initiate-inquiry-from.md) (192 lines) — Normativity: Normative unless marked informative

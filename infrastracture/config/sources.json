@@ -1,0 +1,19 @@
+{
+  "pragmatic-orchestration": {
+    "repository": "https://github.com/CodeAlive-AI/pragmatic-orchestration",
+    "commit": "b349fd32607998f487d40935d2303b07ee1f9b52"
+  },
+  "ai-driven-development": {
+    "repository": "https://github.com/CodeAlive-AI/ai-driven-development",
+    "commit": "ec5239264669b67a71c6eb18d2bdf7e8711c6f1c",
+    "local_adaptations": [
+      "Short FPF file/section names; navigation references updated; splitter limits aligned.",
+      "Original content headings and upstream attribution preserved; mapping in config/renames.json."
+    ]
+  },
+  "openspec": {
+    "repository": "https://github.com/Fission-AI/OpenSpec",
+    "npm_package": "@fission-ai/openspec",
+    "version": "1.14.0"
+  }
+}

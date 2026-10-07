@@ -1,0 +1,6 @@
+{
+  "orchestrator": { "model": "gpt-6.1-sol", "effort": "high" },
+  "worker": { "id": "deepseek-flash", "model": "openrouter/deepseek/deepseek-v4.1-flash", "effort": "none" },
+  "supervision": { "first_check_seconds": 45, "next_check_seconds": 300, "max_parallel_writers": 1 },
+  "skills": ["code-that-fits-in-your-head", "bug-fix-protocol", "agentic-readiness", "ubiquitous-language", "investigating-repository-history", "repo-activity-summary"]
+}

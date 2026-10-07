@@ -1,0 +1,59 @@
+# Credentials and local environment settings
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+.npmrc
+.netrc
+credentials.json
+secrets.json
+*.local
+*.local.*
+
+# Dependencies, build output, and caches
+node_modules/
+dist/
+build/
+coverage/
+.next/
+.nuxt/
+.cache/
+.turbo/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.tsbuildinfo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local agent sessions and runtime data
+.runtime/
+.porch/
+
+# Logs, local databases, and temporary files
+*.log
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite3-journal
+*.db
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+# Machine-specific editor and OS files
+.idea/
+.vscode/
+.vs/
+.DS_Store
+Thumbs.db
+Desktop.ini

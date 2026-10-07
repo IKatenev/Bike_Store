@@ -1,0 +1,16 @@
+{
+  "name": "git_checkout_dash_capital_b",
+  "description": "git checkout -B feature force-creates a new branch — ask first",
+  "input": {
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "git checkout -B feature"
+    },
+    "cwd": "/home/example-user/myproject"
+  },
+  "expect": {
+    "decision": "ask",
+    "rule": "git",
+    "reason_code": "git.branch_create"
+  }
+}

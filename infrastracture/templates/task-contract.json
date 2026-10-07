@@ -1,0 +1,15 @@
+{
+  "id": "FILL_ME",
+  "status": "draft",
+  "objective": "FILL_ME: observable deliverable",
+  "context": "FILL_ME: human intent and current findings",
+  "artifacts": ["FILL_ME: relevant OpenSpec change/spec and design paths"],
+  "scope": ["FILL_ME: allowed components and files; include task journal"],
+  "non_goals": ["Architecture changes outside this contract", "Provider or global agent configuration changes", "Commits, pushes, deployments and recursive delegation"],
+  "compatibility": ["FILL_ME: public interfaces and existing behavior to preserve"],
+  "plan": ["FILL_ME: bounded implementation approach"],
+  "pitfalls": ["FILL_ME: likely failure and how to detect or handle it"],
+  "acceptance": ["FILL_ME: concrete observable condition and evidence"],
+  "checks": [{"argv": ["FILL_ME"], "expected_exit": 0, "timeout_seconds": 300}],
+  "blocker_policy": "Record evidence and proposed adjustment, report to orchestrator, continue independent in-scope work. Do not weaken requirements or hide failures."
+}

@@ -1,0 +1,17 @@
+schema: spec-driven
+context: |
+  Development runs locally on Windows. GPT-6.1 Sol owns planning and acceptance.
+  DeepSeek v4.1 Flash in OpenCode executes bounded tasks through Porch.
+  Read docs/ai/PROJECT-CONTEXT.md for the actual target project's stack, commands,
+  terminology, evidence, constraints and unresolved questions. Do not infer them
+  from this infrastructure bundle. Write human-facing artifacts in Russian;
+  preserve code identifiers and OpenSpec requirement/scenario headings.
+rules:
+  proposal:
+    - State the user outcome, scope and non-goals. Distinguish facts from assumptions.
+  specs:
+    - Include observable normal, failure and boundary scenarios where relevant.
+  design:
+    - Record compatibility, dependencies, verification and recovery proportionate to risk.
+  tasks:
+    - Tasks must have explicit dependencies and acceptance evidence. Completion requires orchestrator verification.

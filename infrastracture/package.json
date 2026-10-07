@@ -1,0 +1,7 @@
+{
+  "name": "local-ai-development-infrastracture",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portable Windows OpenSpec + Porch + OpenCode development workflow",
+  "dependencies": { "@fission-ai/openspec": "1.14.0" }
+}
