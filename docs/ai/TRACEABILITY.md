@@ -1,6 +1,6 @@
 # Прослеживаемость
 
-7 октября 2026 года. Первоначальные документы прочитаны до их согласования;
+Обновлено 8 октября 2026 года. Первоначальные документы прочитаны до их согласования;
 таблица сохраняет происхождение разделов. Последние сообщения человека имеют приоритет.
 Идентификаторы используются в проверках и контрактах; сценарии — в соответствующей spec.
 
@@ -8,20 +8,77 @@
 |---|---|---|
 | requirements: «Каталог и поиск», «Подбор велосипеда», «Карточка товара»; решения пользователя: SKU, ростовка, опечатки, VAT, история. | [catalog](../../openspec/changes/define-bike-store-mvp/specs/catalog/spec.md) | CAT-01, CAT-02, CAT-03, CAT-04, CAT-05, CAT-06 |
 | concept: сеть/склад/самовывоз; solutions: отдельные остатки; последнее сообщение: основной backend, админ-продажи, 30 минут, 3 дня. | [inventory](../../openspec/changes/define-bike-store-mvp/specs/inventory/spec.md) | INV-01, INV-02, INV-03, INV-04, INV-05 |
-| requirements: «Корзина», «Checkout и заказы»; solutions: локальная корзина; уточнения: вся корзина одной точки. | [checkout](../../openspec/changes/define-bike-store-mvp/specs/checkout/spec.md) | CHK-01, CHK-02, CHK-03 |
+| requirements: «Корзина», «Checkout и заказы»; локальная корзина, одна точка; Q-03 и design DD-01: воспроизводимые денежные/VAT снимки. | [checkout](../../openspec/changes/define-bike-store-mvp/specs/checkout/spec.md) | CHK-01, CHK-02, CHK-03, CHK-04 |
 | concept и requirements: аккаунт/история; уточнения: создание при оформлении, подтверждение email, существующий аккаунт. | [customer-accounts](../../openspec/changes/define-bike-store-mvp/specs/customer-accounts/spec.md) | ACC-01, ACC-02, ACC-03 |
 | requirements: «Оплата и доставка»; уточнения: сохранение после неудачи, оплата на месте; последнее сообщение: late payment. | [payments](../../openspec/changes/define-bike-store-mvp/specs/payments/spec.md) | PAY-01, PAY-02, PAY-03, PAY-04 |
 | concept: склад/страна; уточнения: внутренний тариф, раздельные статусы; последнее сообщение: UK-территории. | [fulfilment](../../openspec/changes/define-bike-store-mvp/specs/fulfilment/spec.md) | FUL-01, FUL-02, FUL-03 |
-| requirements: отказ до оплаты/запрос после; уточнения: возвраты/проверка; последнее сообщение: частичный возврат и способы. | [returns](../../openspec/changes/define-bike-store-mvp/specs/returns/spec.md) | RET-01, RET-02, RET-03, RET-04, RET-05 |
+| Отказ/запрос отмены, частичный возврат, способы, проверка; Q-05: причины и плательщик обратной доставки, немедленный запрос и законные сроки. | [returns](../../openspec/changes/define-bike-store-mvp/specs/returns/spec.md) | RET-01, RET-02, RET-03, RET-04, RET-05, RET-06 |
 | requirements: «Административная панель»; уточнения: все заказы сети; последнее сообщение: остатки через операции. | [administration](../../openspec/changes/define-bike-store-mvp/specs/administration/spec.md) | ADM-01, ADM-02, ADM-03 |
 | requirements: «Уведомления», «Контент»; solutions: CMS; уточнения: MVP vs later. | [content-notifications](../../openspec/changes/define-bike-store-mvp/specs/content-notifications/spec.md) | CNT-01, CNT-02, CNT-03 |
 | requirements: «Адаптивность»; уточнения: SEO/GEO; последнее сообщение: en-GB, браузеры, WCAG, CWV. | [storefront-quality](../../openspec/changes/define-bike-store-mvp/specs/storefront-quality/spec.md) | QUA-01, QUA-02, QUA-03, QUA-04 |
 
-Всего 39 requirements и 87 scenarios в 10 capabilities.
+Всего 41 requirements и 124 scenarios в 10 capabilities после уточнений Q-01–Q-10.
 Это полнота сформулированных правил, не гарантия готовности дизайна.
 
 Границы бизнеса (B2C, исключённые функции) — [proposal](../../openspec/changes/define-bike-store-mvp/proposal.md).
 Основная технология и масштаб — [design](../../openspec/changes/define-bike-store-mvp/design.md).
 Следующие релизы перечислены в CNT-03 и proposal; их задачи MVP не создаются.
-Оставшиеся параметры — [Q-01–Q-10](OPEN-QUESTIONS.md).
-Без tasks.md соответствие requirement → исполнимая задача ещё не завершено.
+Происхождение Q-01–Q-10 и данные запуска — [реестр](OPEN-QUESTIONS.md).
+Бизнес-решения последнего сообщения: Q-01/Q-04/Q-05/семантика Q-07/Q-08.
+CHK-04 отражает делегированную техническую цель Q-03; конкретный алгоритм,
+hosting/retention и link defaults — design DD-01–DD-05, не требования человека.
+
+## Требования и задачи реализации
+
+[Tasks](../../openspec/changes/define-bike-store-mvp/tasks.md) содержит первичные
+пункты ниже; тесты/документация включены в соответствующие этапы. Все сценарии
+каждого requirement входят в его приёмку. Группа 14 проверяет общую интеграцию;
+группа 13 — реальные данные/провайдеры/восстановление. Покрытие планом не означает pass.
+
+| Requirement | Основные tasks |
+|---|---|
+| CAT-01 | 2.1, 2.6, 5.3 |
+| CAT-02 | 5.1, 5.3 |
+| CAT-03 | 2.6, 5.2 |
+| CAT-04 | 5.1, 5.4 |
+| CAT-05 | 2.1, 5.1, 5.3 |
+| CAT-06 | 2.3, 3.4, 6.6 |
+| INV-01 | 2.2, 4.1 |
+| INV-02 | 4.2, 7.2 |
+| INV-03 | 4.2, 7.1 |
+| INV-04 | 4.5, 8.3 |
+| INV-05 | 4.7, 9.1, 9.2, 9.3 |
+| CHK-01 | 4.4, 7.2, 7.3 |
+| CHK-02 | 7.1 |
+| CHK-03 | 4.4, 7.2, 7.3 |
+| CHK-04 | 3.1, 3.2, 3.4, 8.5, 12.3 |
+| ACC-01 | 6.3, 6.4, 6.5, 7.3 |
+| ACC-02 | 2.4, 6.3, 6.4, 6.5, 6.6, 7.4 |
+| ACC-03 | 6.6, 12.2 |
+| PAY-01 | 8.3, 8.5 |
+| PAY-02 | 4.5, 8.2, 8.3, 8.4, 8.5 |
+| PAY-03 | 8.1, 8.2, 8.4, 8.6 |
+| PAY-04 | 8.3, 9.3, 10.4 |
+| FUL-01 | 3.1, 3.3, 7.2 |
+| FUL-02 | 4.4, 4.6, 8.4, 8.5, 9.1, 9.3, 9.4 |
+| FUL-03 | 9.4, 9.5 |
+| RET-01 | 4.6, 7.4, 10.1, 10.4 |
+| RET-02 | 3.5, 8.1, 10.2, 10.4 |
+| RET-03 | 8.1, 8.2, 10.1, 10.2, 10.4 |
+| RET-04 | 10.3, 10.4 |
+| RET-05 | 3.5, 7.2, 10.1, 10.2 |
+| RET-06 | 7.2, 10.1, 10.4 |
+| ADM-01 | 2.1, 2.6, 11.1 |
+| ADM-02 | 2.4, 9.5, 11.1 |
+| ADM-03 | 2.4, 2.5, 4.1, 9.2, 9.3, 9.4, 10.3 |
+| CNT-01 | 11.1 |
+| CNT-02 | 4.3, 6.1, 6.2, 7.3, 8.5, 11.2 |
+| CNT-03 | 11.3 |
+| QUA-01 | 5.3, 5.4, 7.1, 11.1, 14.2 |
+| QUA-02 | 5.3, 5.4, 6.5, 6.6, 7.1, 9.5, 10.4, 11.1, 14.2 |
+| QUA-03 | 5.5, 14.2 |
+| QUA-04 | 5.5, 11.1, 14.2 |
+
+Design decisions: DD-01 → 3.1–3.5; DD-02 → 3.1/3.3/5.1/5.2;
+DD-03 → 6.1/6.3–6.5; DD-04 → 12.3–12.5/13.1/13.3–13.6;
+DD-05 → 6.1/12.1–12.3/13.3. Это технические решения с собственным происхождением.

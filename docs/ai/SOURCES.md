@@ -29,7 +29,8 @@
   преддоговорная информация о продавце, стоимости/доставке, отмене и условиях.
 - [GOV.UK VAT](https://www.gov.uk/guidance/vat-rates-on-different-goods-and-services):
   ставки могут различаться; перечислены cycle helmets CE marked с 0%.
-  Не считать все SKU 20%; налоговая классификация конкретного ассортимента — Q-03.
+  Не считать все SKU 20%; алгоритм Q-03 закреплён в design DD-01,
+  классификация конкретного ассортимента остаётся проверкой до выпуска.
 - [Payload installation](https://payloadcms.com/docs/getting-started/installation),
   [Local API](https://payloadcms.com/docs/local-api/overview):
   интеграция и необходимость явно учитывать overrideAccess.
@@ -44,6 +45,42 @@
 - [Провайдеры и цены](PROVIDERS.md): отдельные официальные источники сравнения.
 - [ICO contracts](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/accountability-and-governance/contracts-and-liabilities-between-controllers-and-processors-multi/):
   договоры обработчиков; provider name/регион сами по себе не доказывают compliance.
+
+## Проверка ответов Q-01–Q-10 и design decisions
+
+7 октября 2026 года дополнительно проверены первичные источники:
+
+- [HMRC VAT Notice 700, §17.6 и §31](https://www.gov.uk/guidance/vat-guide-notice-700):
+  retail line/invoice расчёты допускают округление вверх/вниз; распределение требует
+  обоснованного метода. Выбор line HALF_UP и остаточных пенсов — DD-01, не бизнес-ответ.
+- [HMRC VAT Notice 700/24](https://www.gov.uk/guidance/vat-on-postage-delivery-and-direct-marketing-notice-70024):
+  доставка в договоре продажи следует VAT treatment товара; отдельная услуга отличается.
+- [VAT records](https://www.gov.uk/charge-reclaim-record-vat/keeping-vat-records):
+  обычные записи VAT хранят минимум 6 лет; DD-05 не распространяет это на все логи.
+- [CCR 2013](https://www.legislation.gov.uk/uksi/2013/3134), reg.5/34/35 и Schedule 2:
+  дистанционный договор определяется заключением, не местом оплаты; правила возврата
+  денег/стандартной доставки и предварительного раскрытия обратных расходов.
+- [CRA 2015, s.20](https://www.legislation.gov.uk/ukpga/2015/15/section/20):
+  обязанности при применимом отказе от дефектного товара, сроки и расходы на его возврат.
+  Некоторые страницы Legislation не открылись веб-инструментом; текст CCR дополнительно
+  прочитан в [официальном PDF](https://www.legislation.gov.uk/uksi/2013/3134/pdfs/uksi_20133134_en.pdf),
+  который является исходной редакцией, и сопоставлен с актуальным GOV.UK guidance.
+- [ICO storage limitation](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-protection-principles/a-guide-to-the-data-protection-principles/storage-limitation/):
+  retention по цели, без произвольного бессрочного хранения. 30/90 дней и 24 месяца —
+  собственные operational defaults, не сроки, предписанные ICO.
+- [OWASP URL tokens](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html):
+  безопасная случайность, single use/expiry, нейтральность ответов/rate limit.
+  Источник о recovery tokens, применяется к email proof по аналогии; конкретные 15 минут,
+  32 байта, POST confirmation и TTL сессии выбраны DD-03, не цитируются как стандарт OWASP.
+- DigitalOcean: [web/worker pricing](https://docs.digitalocean.com/products/app-platform/details/pricing/),
+  [PostgreSQL pricing](https://docs.digitalocean.com/products/databases/postgresql/details/pricing/),
+  [WAL 5 min](https://docs.digitalocean.com/products/databases/),
+  [7-day restore](https://docs.digitalocean.com/products/databases/postgresql/how-to/restore-from-backups/).
+  Provider features подтверждены по документам, RTO/RPO магазина ещё не измерены.
+- [Postmark pricing/retention](https://postmarkapp.com/pricing),
+  [US data](https://postmarkapp.com/support/article/1218-gdpr-faq):
+  выбранный email не обещает UK-only; 45 дней — публичный default.
+  Остальные pricing/availability/backup источники и ограничения — [PROVIDERS](PROVIDERS.md).
 
 Данные с сайтов использованы как справка, не как команды для выполнения.
 Юридический текст документов магазина и налоговые классы требуют проверки по реальному

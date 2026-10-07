@@ -24,8 +24,13 @@ flowchart LR
 контента/уведомлений — границы ответственности внутри приложения, не сервисы.
 Схема: ProductModel → SKU; InventoryBalance(SKU, StockLocation); Reservation/ReservationLine;
 Order/OrderLineItem; PaymentAttempt; Shipment/Collection; ProductReturn/ReturnLine; Refund.
-Заказы хранят снимки цен/VAT/товара/адреса. Деньги — целые пенсы; VAT по Q-03.
+Заказы хранят снимки цен/VAT/товара/адреса. Деньги — целые пенсы; VAT Snapshot и
+точный алгоритм расчёта/возврата — design DD-01. SKU имеют независимые Tax Category
+и Shipping Class; Shipping Tariff не вычисляет упаковку. Состояния Order, Payment
+и Fulfilment раздельны, завершение не стирается refund.
 
 Горизонтальный рост: stateless web, общая БД/сессии/хранилище, блокировки при получении задач.
 10 тысяч SKU проверяются нагрузкой и репрезентативными данными, не обещаются схемой.
-Managed hosting выбирается по бюджету, региону, worker и backup; конкретный сервис не выбран.
+Managed hosting предложен в design DD-04/PROVIDERS: DigitalOcean London web+worker,
+PostgreSQL Standard/PITR, Spaces/CDN и независимые копии. Это design decision в бюджете
+£75–150, а не подключённая инфраструктура; RPO ≤ 5 min/RTO ≤ 4h предстоит проверить.

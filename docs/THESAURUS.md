@@ -29,10 +29,15 @@ skill: ubiquitous-language
 - **Refund** `Refund` kind:entity
 - **Reservation** `Reservation` kind:aggregate
 - **Return Line** `ReturnLine` kind:entity
+- **Return Reason** `ReturnReason` kind:value
 - **Shipment** `Shipment` kind:entity
+- **Shipping Class** `ShippingClass` kind:value
+- **Shipping Tariff** `ShippingTariff` kind:policy
 - **SKU** `SKU` kind:entity
 - **Staff Account** `StaffAccount` kind:entity
 - **Stock Location** `StockLocation` kind:entity
+- **Tax Category** `TaxCategory` kind:value
+- **VAT Snapshot** `VATSnapshot` kind:value
 
 ## Terms
 
@@ -108,9 +113,21 @@ skill: ubiquitous-language
 
 - **Definition**: Количество из позиции заказа, возвращаемое в рамках Product Return.
 
+### Return Reason
+
+- **Definition**: Причина физического возврата, различающая желание покупателя, брак и ошибку поставки.
+
 ### Shipment
 
 - **Definition**: Отправление с центрального склада; факт отправки не равен получению.
+
+### Shipping Class
+
+- **Definition**: Категория SKU для выбора тарифа доставки, отдельная от налоговой категории.
+
+### Shipping Tariff
+
+- **Definition**: Внутреннее правило стоимости доставки по адресу, классу и количеству товаров.
 
 ### SKU
 
@@ -124,6 +141,14 @@ skill: ubiquitous-language
 
 - **Definition**: Центральный склад либо физический магазин с отдельными остатками.
 
+### Tax Category
+
+- **Definition**: Налоговая категория SKU, определяющая применимое VAT treatment и действующую ставку.
+
+### VAT Snapshot
+
+- **Definition**: Неизменяемая налоговая разбивка заказа или его корректировки с категориями, ставками, суммами и основанием расчёта.
+
 ## Forbidden
 
 Не назначены: код ещё не содержит конфликтующих имён. Не использовать одно Status
@@ -135,5 +160,6 @@ skill: ubiquitous-language
 
 ## Unresolved
 
-Лексических конфликтов не обнаружено. Переходы состояний и точная семантика
-подсчёта моделей — [открытые бизнес-вопросы](ai/OPEN-QUESTIONS.md), а не новые названия.
+Лексических конфликтов не обнаружено. Состояния и подсчёт моделей уточнены в
+OpenSpec. Shipping Class, Shipping Tariff и Return Reason отражают бизнес-решения;
+Tax Category и VAT Snapshot — технические понятия design decisions Q-03.
