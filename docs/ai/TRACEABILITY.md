@@ -17,7 +17,9 @@
 | requirements: «Уведомления», «Контент»; solutions: CMS; уточнения: MVP vs later. | [content-notifications](../../openspec/changes/define-bike-store-mvp/specs/content-notifications/spec.md) | CNT-01, CNT-02, CNT-03 |
 | requirements: «Адаптивность»; уточнения: SEO/GEO; последнее сообщение: en-GB, браузеры, WCAG, CWV. | [storefront-quality](../../openspec/changes/define-bike-store-mvp/specs/storefront-quality/spec.md) | QUA-01, QUA-02, QUA-03, QUA-04 |
 
-Всего 41 requirements и 124 scenarios в 10 capabilities после уточнений Q-01–Q-10.
+Всего 41 requirements и 143 scenarios в 10 capabilities после ответов UX-01–UX-13
+(до них было 124 scenarios). [UX-реестр](UX-OPEN-QUESTIONS.md) фиксирует источник ответа,
+задействованные requirement IDs, отдельное согласование исправления UX-02 и технические детали без выбранных defaults.
 Это полнота сформулированных правил, не гарантия готовности дизайна.
 
 Границы бизнеса (B2C, исключённые функции) — [proposal](../../openspec/changes/define-bike-store-mvp/proposal.md).
@@ -29,6 +31,10 @@ CHK-04 отражает делегированную техническую це
 hosting/retention и link defaults — design DD-01–DD-05, не требования человека.
 
 ## Требования и задачи реализации
+
+Ответы UX уточняют приёмку существующих задач в таблице «Уточнения приёмки по ответам UX»
+в tasks.md. Новые чекбоксы не созданы, выполненных пунктов нет. UX-02 уточняет приёмку
+PAY-02/PAY-03/INV-04/CHK-03; реализация по-прежнему не разрешена текущим этапом.
 
 [Tasks](../../openspec/changes/define-bike-store-mvp/tasks.md) содержит первичные
 пункты ниже; тесты/документация включены в соответствующие этапы. Все сценарии

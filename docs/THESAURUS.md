@@ -14,6 +14,7 @@ skill: ubiquitous-language
 - **Available Quantity** `AvailableQuantity` kind:value
 - **Cart** `Cart` kind:aggregate
 - **Collection** `Collection` kind:entity
+- **Collection Code** `CollectionCode` kind:value
 - **Customer Account** `CustomerAccount` kind:entity
 - **Fulfilment State** `FulfilmentState` kind:state
 - **Inventory Balance** `InventoryBalance` kind:entity
@@ -52,6 +53,13 @@ skill: ubiquitous-language
 ### Collection
 
 - **Definition**: Самовывоз всей корзины из одного выбранного магазина.
+
+### Collection Code
+
+- **Definition**: Специальный код получения подготовленного самовывоза. Покупатель может передать
+  его другому человеку; сотрудник проверяет код при выдаче. Номер заказа не заменяет код,
+  код не предоставляет доступ к Customer Account. Формат, срок и технические параметры
+  ещё предлагаются для согласования по UX-06; не приравнивать к ссылке подтверждения email.
 
 ### Customer Account
 
