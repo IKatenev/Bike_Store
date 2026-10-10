@@ -135,6 +135,11 @@ export function createInitialState(seed, options = {}) {
     guestOrderIds: [],
     currentGuestOrderId: null,
     verified: false,
+    customer: { signedIn: false, email: null, name: null },
+    pendingAccess: null,
+    wishlist: [],
+    reviews: clone(seed.reviews || []),
+    reviewSeq: 1,
     staff: { role: null, authenticated: false, secondFactorPassed: false },
     content: {
       pages: clone(seed.pages),
@@ -190,7 +195,114 @@ export function deserializeState(seed, raw, options = {}) {
   let parsed;
   try { parsed = JSON.parse(raw); } catch (err) { return base; }
   if (!isValidStateShape(parsed)) return base;
-  return Object.assign(base, parsed, { now: options.now || (() => Date.now()) });
+  const merged = Object.assign(base, parsed, { now: options.now || (() => Date.now()) });
+  return migrateState(seed, merged);
+}
+
+// Add safe defaults for fields introduced after earlier prototype versions and
+// filter out malformed new fields. Existing orders/cart/content are never
+// destroyed, so a legacy state keeps all of its Order data.
+export function migrateState(seed, state) {
+  const knownModelIds = new Set(seed.models.map((m) => m.id));
+  if (!Array.isArray(state.wishlist)) state.wishlist = [];
+  state.wishlist = [...new Set(state.wishlist)]
+    .filter((id) => typeof id === 'string' && knownModelIds.has(id));
+  if (!state.customer || typeof state.customer !== 'object' || Array.isArray(state.customer)) {
+    state.customer = { signedIn: false, email: null, name: null };
+  } else {
+    state.customer = {
+      signedIn: state.customer.signedIn === true,
+      email: typeof state.customer.email === 'string' ? state.customer.email : null,
+      name: typeof state.customer.name === 'string' ? state.customer.name : null
+    };
+  }
+  if (state.pendingAccess != null && (typeof state.pendingAccess !== 'object' || Array.isArray(state.pendingAccess))) {
+    state.pendingAccess = null;
+  }
+  // Add fixture balances ONLY for SKUs entirely absent from the stored state
+  // (e.g. a new demo product added after this session was saved, such as the
+  // Fieldnote Gravel Frame SKUs). Existing balances, orders and reservations are
+  // never reset, so an old saved session can still buy the new demo product.
+  if (!Array.isArray(state.balances)) state.balances = [];
+  const presentSkus = new Set(state.balances.map((b) => b.skuId));
+  for (const row of seed.balanceRows) {
+    if (!presentSkus.has(row.skuId)) state.balances.push({ ...row });
+  }
+  // Safe content migration: a legacy session may predate the newer journal
+  // fixtures and their metadata. Add only articles that are entirely missing,
+  // and fill only missing metadata on existing ones. Never overwrite a user's
+  // edited title/body/published state, orders, cart or wishlist.
+  if (!state.content || typeof state.content !== 'object' || Array.isArray(state.content)) {
+    state.content = { pages: clone(seed.pages), articles: clone(seed.articles), curations: clone(seed.curations) };
+  }
+  if (!state.content.articles || typeof state.content.articles !== 'object' || Array.isArray(state.content.articles)) {
+    state.content.articles = clone(seed.articles);
+  }
+  for (const [slug, fixture] of Object.entries(seed.articles)) {
+    const existing = state.content.articles[slug];
+    if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
+      state.content.articles[slug] = clone(fixture);
+      continue;
+    }
+    if (existing.publishedAt == null) existing.publishedAt = fixture.publishedAt;
+    if (existing.artVariant == null) existing.artVariant = fixture.artVariant;
+    if (existing.excerpt == null) existing.excerpt = fixture.excerpt;
+  }
+  // Model-level demo reviews (ProductReview). A legacy session predating the
+  // reviews feature gains the synthetic demo set; an existing review is never
+  // overwritten or duplicated (matched by stable id). Malformed entries and
+  // reviews for unknown models are dropped safely.
+  if (!Array.isArray(state.reviews)) state.reviews = [];
+  if (!Number.isInteger(state.reviewSeq) || state.reviewSeq < 1) state.reviewSeq = 1;
+  // Filter/recover malformed saved reviews BEFORE any aggregation or render so a
+  // bad rating/title/date can never yield a NaN average or an invalid date. A
+  // valid custom review is preserved (only trimmed/normalised when needed).
+  state.reviews = state.reviews.filter((r) => {
+    if (!r || typeof r !== 'object' || Array.isArray(r)) return false;
+    if (typeof r.id !== 'string' || !r.id) return false;
+    if (!knownModelIds.has(r.modelId)) return false;
+    if (!Number.isInteger(r.rating) || r.rating < 1 || r.rating > 5) return false;
+    const title = typeof r.title === 'string' ? r.title.trim() : '';
+    if (!title) return false;
+    r.title = title;
+    if (typeof r.description !== 'string') r.description = '';
+    if (typeof r.createdAt !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(r.createdAt)) r.createdAt = '';
+    if (typeof r.author !== 'string' || !r.author.trim()) r.author = 'Demo customer';
+    return true;
+  });
+  const presentReviewIds = new Set(state.reviews.map((r) => r.id));
+  for (const r of (seed.reviews || [])) {
+    if (r && !presentReviewIds.has(r.id) && knownModelIds.has(r.modelId)) state.reviews.push(clone(r));
+  }
+  // Curation migration: top up a curation ONLY when the stored list still exactly
+  // matches an earlier shipped default. Manager edits, custom lists, published
+  // flags and titles are preserved untouched.
+  if (!state.content.curations || typeof state.content.curations !== 'object' || Array.isArray(state.content.curations)) {
+    state.content.curations = clone(seed.curations);
+  }
+  for (const [id, fixture] of Object.entries(seed.curations)) {
+    const existing = state.content.curations[id];
+    if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
+      state.content.curations[id] = clone(fixture);
+      continue;
+    }
+    const legacy = LEGACY_CURATION_DEFAULTS[id];
+    if (legacy && Array.isArray(existing.modelIds) && sameIdList(existing.modelIds, legacy)) {
+      existing.modelIds = fixture.modelIds.slice();
+    }
+  }
+  return state;
+}
+
+// Shipped default curation lists from before the four-up home change. A stored
+// list identical to one of these is a pristine default and may be topped up.
+const LEGACY_CURATION_DEFAULTS = {
+  featured: ['gravel-01', 'ebike-01', 'kids-01'],
+  sale: ['gravel-01', 'ebike-01']
+};
+
+function sameIdList(a, b) {
+  return Array.isArray(a) && a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
 
@@ -309,11 +421,11 @@ export function searchModels(seed, query) {
 
 function skuMatchesCriteria(seed, state, sku, model, criteria, context) {
   if (!sku.published) return false;
-  if (criteria.brand && model.brand !== criteria.brand) return false;
-  if (criteria.type && model.type !== criteria.type) return false;
-  if (criteria.wheels && model.wheels !== criteria.wheels) return false;
-  if (criteria.categoryId && model.categoryId !== criteria.categoryId) return false;
-  if (criteria.frameSize && sku.frameSize !== criteria.frameSize) return false;
+  if (!anyMatch(model.brand, criteria.brand)) return false;
+  if (!anyMatch(model.type, criteria.type)) return false;
+  if (!anyMatch(model.wheels, criteria.wheels)) return false;
+  if (!anyMatch(model.categoryId, criteria.categoryId)) return false;
+  if (!anyMatch(sku.frameSize, criteria.frameSize)) return false;
   if (criteria.priceMin != null && sku.priceGross < criteria.priceMin) return false;
   if (criteria.priceMax != null && sku.priceGross > criteria.priceMax) return false;
   if (criteria.heightCm != null && criteria.heightCm !== '') {
@@ -330,6 +442,15 @@ function skuMatchesCriteria(seed, state, sku, model, criteria, context) {
   return true;
 }
 
+// A criterion may be a single legacy value (scalar) or a multi-select list.
+// An empty or absent criterion matches everything. Values inside one list are
+// OR'd; separate criteria are AND'ed together by the caller (PRO-18).
+export function anyMatch(value, criterion) {
+  if (criterion == null || criterion === '') return true;
+  if (Array.isArray(criterion)) return criterion.length === 0 || criterion.includes(value);
+  return value === criterion;
+}
+
 // Every filter must be satisfied by ONE SKU. Models are counted once.
 // From price prefers matching variants AVAILABLE in the chosen context and only
 // falls back to matching unavailable variants when none are available. Criteria
@@ -338,7 +459,7 @@ export function filterModels(seed, state, criteria, context) {
   const out = [];
   for (const model of seed.models) {
     if (!model.published) continue;
-    if (criteria.categoryId && model.categoryId !== criteria.categoryId) continue;
+    if (!anyMatch(model.categoryId, criteria.categoryId)) continue;
     const skus = skusForModel(seed, model.id);
     const matching = skus.filter((s) => skuMatchesCriteria(seed, state, s, model, criteria, context));
     if (!matching.length) continue;
@@ -511,6 +632,47 @@ export function cartTotals(seed, state, cart, options = {}) {
     shippingReason: shipping.reason || null,
     totalGross,
     vatGross
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Checkout context and gate
+// ---------------------------------------------------------------------------
+
+// The single transition from an explicit user selection (delivery vs a chosen
+// collection store) to the packed cart context. The header picker, the in-form
+// fulfilment radios/store select and the submit handler all use this so
+// availability, totals and the submit gate can never drift apart.
+export function resolveCartContext(selection = {}) {
+  if (selection.fulfilment === 'collection') {
+    return { type: 'collection', storeId: selection.storeId || null };
+  }
+  return { type: 'delivery', storeId: null };
+}
+
+// Shared checkout gate used both by the server-rendered view and by the
+// client-side in-place refresh. A delivery cart cannot price shipping until an
+// address is entered ("pending"), which does not block checkout; only a real
+// shipping problem for a supplied address blocks, and an unavailable row always
+// blocks the whole cart. Availability never depends on the typed address.
+export function checkoutGate(seed, state, cart, form = {}) {
+  const address = (form && form.address) || {};
+  const totals = cartTotals(seed, state, cart, { address });
+  const isDelivery = cart.context.type === 'delivery';
+  const addressEntered = isDelivery && !!(
+    String(address.line1 || '').trim() || String(address.city || '').trim() || String(address.postcode || '').trim());
+  const pricedTotals = addressEntered ? totals : cartTotals(seed, state, cart, { address: undefined });
+  const shippingPending = isDelivery && !addressEntered;
+  const shippingBlocked = isDelivery && addressEntered && !totals.shippingOk;
+  return {
+    totals,
+    pricedTotals,
+    isDelivery,
+    isCollection: !isDelivery,
+    addressEntered,
+    shippingPending,
+    shippingBlocked,
+    blocked: !totals.allAvailable || shippingBlocked
   };
 }
 
@@ -1288,6 +1450,36 @@ export function visibleArticles(state) {
   return Object.values(state.content.articles).filter((a) => a.published);
 }
 
+// Published articles newest first. `publishedAt` is an ISO date (YYYY-MM-DD);
+// ties fall back to a stable ascending slug so the order is deterministic.
+export function publishedArticlesByDate(state) {
+  return visibleArticles(state).slice().sort((a, b) => {
+    const da = typeof a.publishedAt === 'string' ? a.publishedAt : '';
+    const db = typeof b.publishedAt === 'string' ? b.publishedAt : '';
+    if (da !== db) return da < db ? 1 : -1;
+    return a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0;
+  });
+}
+
+export function latestArticles(state, limit = 3) {
+  return publishedArticlesByDate(state).slice(0, limit);
+}
+
+const ARTICLE_MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+// Readable en-GB date from an ISO YYYY-MM-DD string, without timezone drift.
+export function formatArticleDate(iso) {
+  if (typeof iso !== 'string') return '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return '';
+  const month = ARTICLE_MONTHS[Number(m[2]) - 1];
+  if (!month) return '';
+  return `${Number(m[3])} ${month} ${m[1]}`;
+}
+
 export function visiblePages(state) {
   return Object.values(state.content.pages).filter((p) => p.published);
 }
@@ -1345,6 +1537,248 @@ export function setSkuPrice(seed, skuId, patch) {
   if (price != null) sku.priceGross = price;
   sku.regularGross = regular;
   return { ok: true, sku };
+}
+
+// ---------------------------------------------------------------------------
+// Customer account (single demo persona) and Wishlist
+// ---------------------------------------------------------------------------
+
+export function signInCustomer(state, { email, name } = {}) {
+  const cleanEmail = String(email || '').trim();
+  if (!cleanEmail) return { ok: false, reason: 'email_required' };
+  const cleanName = name != null && String(name).trim() ? String(name).trim() : null;
+  state.customer = {
+    signedIn: true,
+    email: cleanEmail,
+    name: cleanName || (state.customer && state.customer.name) || cleanEmail.split('@')[0]
+  };
+  logEvent(state, { type: 'customer.signed_in' });
+  return { ok: true, customer: state.customer };
+}
+
+export function signOutCustomer(state) {
+  state.customer = { signedIn: false, email: null, name: null };
+  state.verified = false;
+  state.pendingAccess = null;
+  logEvent(state, { type: 'customer.signed_out' });
+  return { ok: true };
+}
+
+// Email access is a two-step gate: requesting access stores the intent WITHOUT
+// granting anything; only an explicit confirmation signs the demo persona in and
+// confirms the order-history proof. No second, incompatible access system.
+export function requestEmailAccess(state, { email, name } = {}) {
+  const cleanEmail = String(email || '').trim();
+  if (!cleanEmail) return { ok: false, reason: 'email_required' };
+  const cleanName = name != null && String(name).trim() ? String(name).trim() : null;
+  state.pendingAccess = { email: cleanEmail, name: cleanName, requestedAt: state.now() };
+  logEvent(state, { type: 'access.requested' });
+  return { ok: true, pending: state.pendingAccess };
+}
+
+export function confirmEmailAccess(state) {
+  const pending = state.pendingAccess;
+  if (!pending || !pending.email) return { ok: false, reason: 'no_request' };
+  signInCustomer(state, { email: pending.email, name: pending.name });
+  confirmEmailVerification(state);
+  state.pendingAccess = null;
+  logEvent(state, { type: 'access.confirmed' });
+  return { ok: true, customer: state.customer };
+}
+
+export function confirmProviderAccess(state, provider) {
+  const label = String(provider || 'Google');
+  signInCustomer(state, { email: `demo.${label.toLowerCase()}@example.com`, name: `${label} demo user` });
+  confirmEmailVerification(state);
+  state.pendingAccess = null;
+  logEvent(state, { type: 'access.provider_confirmed', provider: label });
+  return { ok: true, customer: state.customer };
+}
+
+export function isSignedIn(state) {
+  return !!(state.customer && state.customer.signedIn);
+}
+
+export function wishlistModelIds(state) {
+  return Array.isArray(state.wishlist) ? state.wishlist.slice() : [];
+}
+
+export function isWishlisted(state, modelId) {
+  return wishlistModelIds(state).includes(modelId);
+}
+
+// Unique model ids only; adding an already saved model is a no-op success.
+export function addToWishlist(state, modelId) {
+  if (!isSignedIn(state)) return { ok: false, reason: 'guest' };
+  if (typeof modelId !== 'string' || !modelId) return { ok: false, reason: 'bad_model' };
+  if (!Array.isArray(state.wishlist)) state.wishlist = [];
+  const existed = state.wishlist.includes(modelId);
+  if (!existed) {
+    state.wishlist.push(modelId);
+    logEvent(state, { type: 'wishlist.added', modelId });
+  }
+  return { ok: true, added: !existed, already: existed };
+}
+
+export function removeFromWishlist(state, modelId) {
+  if (!isSignedIn(state)) return { ok: false, reason: 'guest' };
+  if (!Array.isArray(state.wishlist)) state.wishlist = [];
+  const before = state.wishlist.length;
+  state.wishlist = state.wishlist.filter((id) => id !== modelId);
+  if (state.wishlist.length !== before) logEvent(state, { type: 'wishlist.removed', modelId });
+  return { ok: true, removed: state.wishlist.length !== before };
+}
+
+export function wishlistModels(seed, state) {
+  return wishlistModelIds(state)
+    .map((id) => getModel(seed, id))
+    .filter((m) => m && m.published);
+}
+
+// ---------------------------------------------------------------------------
+// Product Reviews (model-level; never keyed by SKU)
+// ---------------------------------------------------------------------------
+
+// Newest first, with a stable ascending id tie so pagination is deterministic.
+export function reviewsForModel(state, modelId) {
+  const list = Array.isArray(state.reviews) ? state.reviews : [];
+  return list
+    .filter((r) => r && r.modelId === modelId
+      && Number.isInteger(r.rating) && r.rating >= 1 && r.rating <= 5
+      && typeof r.title === 'string' && r.title.trim() !== '')
+    .slice()
+    .sort((a, b) => {
+      const da = typeof a.createdAt === 'string' ? a.createdAt : '';
+      const db = typeof b.createdAt === 'string' ? b.createdAt : '';
+      if (da !== db) return da < db ? 1 : -1;
+      return String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0;
+    });
+}
+
+// Aggregate across ALL of a model's reviews (not a page, not a SKU). An empty
+// list is honestly 0 ratings with no invented average.
+export function reviewSummary(state, modelId) {
+  const list = reviewsForModel(state, modelId);
+  if (!list.length) return { count: 0, average: 0 };
+  const total = list.reduce((n, r) => n + r.rating, 0);
+  return { count: list.length, average: Math.round((total / list.length) * 10) / 10 };
+}
+
+// A single page of a model's reviews (default five per page).
+export function reviewPage(state, modelId, page = 1, perPage = 5) {
+  const list = reviewsForModel(state, modelId);
+  const pageCount = Math.max(1, Math.ceil(list.length / perPage));
+  const current = Math.min(Math.max(1, Number(page) || 1), pageCount);
+  const start = (current - 1) * perPage;
+  return {
+    items: list.slice(start, start + perPage),
+    page: current,
+    pageCount,
+    total: list.length,
+    perPage
+  };
+}
+
+// Submission is validated in the domain. Only an explicit, signed-in customer
+// may review; buying the item is NOT required. Rating must be an integer 1..5
+// and the title must be non-empty after trimming. Description is optional.
+export function createProductReview(state, { modelId, rating, title, description, author } = {}) {
+  if (!isSignedIn(state)) return { ok: false, reason: 'not_signed_in' };
+  if (typeof modelId !== 'string' || !modelId) return { ok: false, reason: 'bad_model' };
+  const ratingNum = Number(rating);
+  if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) return { ok: false, reason: 'invalid_rating' };
+  const cleanTitle = String(title == null ? '' : title).trim();
+  if (!cleanTitle) return { ok: false, reason: 'title_required' };
+  const cleanDescription = String(description == null ? '' : description).trim();
+  if (!Array.isArray(state.reviews)) state.reviews = [];
+  if (!Number.isInteger(state.reviewSeq) || state.reviewSeq < 1) state.reviewSeq = 1;
+  const id = 'rev-user-' + String(state.reviewSeq).padStart(4, '0');
+  state.reviewSeq += 1;
+  const review = {
+    id,
+    modelId,
+    rating: ratingNum,
+    title: cleanTitle,
+    description: cleanDescription,
+    author: (author && String(author).trim()) || (state.customer && state.customer.name) || 'Demo customer',
+    createdAt: londonDateString(state.now())
+  };
+  state.reviews.push(review);
+  logEvent(state, { type: 'review.created', modelId, rating: ratingNum });
+  return { ok: true, review };
+}
+
+// ---------------------------------------------------------------------------
+// Product variant selection (colour / size dropdowns)
+// ---------------------------------------------------------------------------
+
+export function skuOptionValue(sku) {
+  return sku.size || sku.frameSize || 'One size';
+}
+
+// Resolve a colour + size request to a real existing SKU. When the exact
+// combination does not exist the dimension the user just CHANGED is preserved
+// and the other one is adjusted to a real existing combination, reported via
+// `adjusted`/`reason`/`changed`. Without a `changed` hint the colour is kept
+// first (historical behaviour).
+export function chooseSku(seed, modelId, selection = {}) {
+  const skus = skusForModel(seed, modelId).filter((s) => s.published);
+  if (!skus.length) return { sku: null, adjusted: false, reason: 'no_skus' };
+  const wantColour = selection.colour || null;
+  const wantSize = selection.size || null;
+  const changed = selection.changed || null;
+  const exact = skus.find((s) =>
+    (!wantColour || s.colour === wantColour) && (!wantSize || skuOptionValue(s) === wantSize));
+  if (exact) return { sku: exact, adjusted: false };
+  const order = changed === 'size' ? ['size', 'colour'] : ['colour', 'size'];
+  for (const dim of order) {
+    if (dim === 'size' && wantSize) {
+      const bySize = skus.filter((s) => skuOptionValue(s) === wantSize);
+      if (bySize.length) {
+        const pick = (wantColour && bySize.find((s) => s.colour === wantColour)) || bySize[0];
+        return { sku: pick, adjusted: true, reason: 'colour_adjusted', changed: 'size' };
+      }
+    }
+    if (dim === 'colour' && wantColour) {
+      const byColour = skus.filter((s) => s.colour === wantColour);
+      if (byColour.length) {
+        const pick = (wantSize && byColour.find((s) => skuOptionValue(s) === wantSize)) || byColour[0];
+        return { sku: pick, adjusted: true, reason: 'size_adjusted', changed: 'colour' };
+      }
+    }
+  }
+  return { sku: skus[0], adjusted: true, reason: 'combination_unavailable' };
+}
+
+// ---------------------------------------------------------------------------
+// Related products (name similarity only, never a compatibility promise)
+// ---------------------------------------------------------------------------
+
+function nameTokens(name) {
+  return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean);
+}
+
+export function recommendModels(seed, state, modelId, options = {}) {
+  const limit = options.limit || 6;
+  const current = getModel(seed, modelId);
+  if (!current) return [];
+  const currentTokens = new Set(nameTokens(current.name));
+  const scored = [];
+  seed.models.forEach((m, index) => {
+    if (m.id === current.id || !m.published) return;
+    let overlap = 0;
+    for (const t of new Set(nameTokens(m.name))) if (currentTokens.has(t)) overlap += 1;
+    scored.push({ model: m, overlap, brandTie: m.brand === current.brand ? 1 : 0, index });
+  });
+  const withOverlap = scored.filter((s) => s.overlap > 0);
+  if (!withOverlap.length) {
+    // No shared name tokens: fall back to the ordinary published assortment.
+    return seed.models
+      .filter((m) => m.published && m.id !== current.id && (m.categoryId === 'bikes' || m.categoryId === 'parts'))
+      .slice(0, limit);
+  }
+  withOverlap.sort((a, b) => (b.overlap - a.overlap) || (b.brandTie - a.brandTie) || (a.index - b.index));
+  return withOverlap.slice(0, limit).map((s) => s.model);
 }
 
 // ---------------------------------------------------------------------------

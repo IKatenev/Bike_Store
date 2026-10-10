@@ -1,0 +1,4 @@
+[porch] artifacts run_dir=C:\Workspace\01_Projects\Porfolio\Bike_Store\infrastracture\.runtime\porch-output/run-delegate.Tuz9We
+[porch] stage=delegate agent=deepseek-flash cwd=/c/Workspace/01_Projects/Porfolio/Bike_Store steerable=1
+[porch] stage=delegate detached run_id=run_deepseek-flash-bike-store-checkout-context
+run_id=run_deepseek-flash-bike-store-checkout-context

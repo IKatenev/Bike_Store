@@ -2,12 +2,20 @@
 import {
   escapeHtml, formatGBP, getModel, getSku, skusForModel, getLocation,
   filterModels, searchModels, cartTotals, cartAvailability, contextLabel,
-  computeShipping, validateCheckout, getTaxRate, availableQuantity,
+  computeShipping, validateCheckout, getTaxRate, availableQuantity, checkoutGate,
   reservationActive, reservationDeadline, canReorder, visibleArticles, visiblePages,
   curationModels, guestOrders, verifiedHistory, refundSaysMoneyReturned,
-  londonDateTimeString, scenarioOrderId, reorderChanges, modelPriceSummary
+  londonDateTimeString, scenarioOrderId, reorderChanges, modelPriceSummary,
+  chooseSku, skuOptionValue, recommendModels, isSignedIn, isWishlisted,
+  wishlistModels, wishlistModelIds, latestArticles, formatArticleDate,
+  reviewSummary, reviewPage
 } from './domain.mjs';
-import { bikeSvg, productSvg, heroArt } from './assets.mjs';
+import {
+  bikeSvg, productSvg, heroArt, frameSvg, articleArt,
+  bikeDetailSvg, bikeCockpitSvg, frameDetailSvg,
+  iconUser, iconCart, iconOrders, iconHeart, iconSearch, iconFilter,
+  iconClose, iconChevron, iconCheck, iconTruck, iconStore
+} from './assets.mjs';
 
 export const COLOUR_HEX = {
   Sand: '#cbb994', Forest: '#344f3c', Ink: '#242c27',
@@ -19,6 +27,14 @@ const ART_KIND = {
   lights: 'lights', jerseys: 'jerseys', gloves: 'gloves', jackets: 'jackets'
 };
 
+// Short, useful demo profiles for the Manufacturer tab. Synthetic brands only:
+// no real manufacturer, factory or external claim is represented.
+const BRAND_PROFILES = {
+  'PEDAL & FIELD': 'Our in-house demonstration brand. It covers gravel, touring, electric and everyday bikes alongside a small matching parts and clothing range.',
+  'Northgate': 'A demonstration brand for road, trail and mountain bikes, with a focused parts line for the same riders.',
+  'Larkhill': 'A demonstration brand for city and kids bikes, helmets, lights, locks and riding clothing.'
+};
+
 export function colourHex(name) {
   return COLOUR_HEX[name] || '#344f3c';
 }
@@ -26,7 +42,40 @@ export function colourHex(name) {
 export function modelArt(model, colour) {
   if (!model) return productSvg('accessory', '#344f3c');
   if (model.categoryId === 'bikes') return bikeSvg(colourHex(colour), model.type);
+  if (model.type === 'frames') return frameSvg(colourHex(colour));
   return productSvg(ART_KIND[model.type] || 'accessory', colourHex(colour));
+}
+
+// Several DISTINCT local demonstration views per model. Bikes show three
+// genuinely different scenes (side, drivetrain close-up, cockpit); a bare
+// frameset shows two; parts/accessories/clothing show a single view so the
+// one-image case has no pointless paging controls. Colour follows the selected
+// SKU so the chosen variant is accurate.
+export function galleryViews(model, colour) {
+  const c = colourHex(colour);
+  if (!model) return [{ label: 'View', svg: productSvg('accessory', c) }];
+  if (model.categoryId === 'bikes') {
+    return [
+      { label: 'Side', svg: bikeSvg(c, model.type) },
+      { label: 'Drivetrain', svg: bikeDetailSvg(c) },
+      { label: 'Cockpit', svg: bikeCockpitSvg(c) }
+    ];
+  }
+  if (model.type === 'frames') {
+    return [
+      { label: 'Frame', svg: frameSvg(c) },
+      { label: 'Dropouts', svg: frameDetailSvg(c) }
+    ];
+  }
+  return [{ label: 'View', svg: productSvg(ART_KIND[model.type] || 'accessory', c) }];
+}
+
+// Accessible star row: a filled/hollow star per rating value with a text label.
+function stars(rating, label) {
+  const value = Math.max(0, Math.min(5, Number(rating) || 0));
+  const glyphs = [1, 2, 3, 4, 5].map((i) =>
+    `<span class="star${i <= value ? ' star-on' : ''}" aria-hidden="true">&#9733;</span>`).join('');
+  return `<span class="stars" role="img" aria-label="${escapeHtml(label || (value + ' out of 5'))}">${glyphs}</span>`;
 }
 
 function discounted(sku) {
@@ -111,21 +160,98 @@ export function home(seed, state, params, ctx = {}) {
   const grid = (title, models) => {
     if (!models.length) return ''; // empty curation is hidden
     return `<section class="curation">
-      <div class="section-head"><h2>${escapeHtml(title)}</h2></div>
-      <div class="grid grid-products">${models.map((m) => productCard(seed, state, m)).join('')}</div>
+      <div class="section-head"><h2>${escapeHtml(title)}</h2><a class="link" href="#catalog">See all</a></div>
+      <div class="grid grid-products home-products">${models.map((m) => productCard(seed, state, m)).join('')}</div>
     </section>`;
   };
 
-  return `
-    <section class="hero">
-      <div class="hero-art">${heroArt()}</div>
-      <div class="hero-copy">
-        <p class="eyebrow">New season</p>
-        <h1>Bikes and kit for the long way round.</h1>
-        <p class="lede">Find the right ride, then choose delivery to your door or collection from a store near you. From city commutes to gravel weekends.</p>
-        <p><a class="btn btn-primary" href="#catalog">Browse the catalogue</a> <a class="btn btn-ghost" href="#guide">Open prototype guide</a></p>
+  // Three manual hero slides: each has its own scene, copy and a single link.
+  // The whole visible slide is one anchor; the CTA is a styled span inside it
+  // (no nested anchor/button). Controls stay outside the anchor. No autoplay.
+  const slides = [
+    {
+      variant: 0, eyebrow: 'New season',
+      title: 'Bikes and kit for the long way round.',
+      text: 'Find the right ride, then choose delivery to your door or collection from a store near you.',
+      href: '#catalog', cta: 'Browse the catalogue'
+    },
+    {
+      variant: 1, eyebrow: 'Everyday riding',
+      title: 'Commute, shop and explore.',
+      text: 'Upright city bikes, e-commuters and practical kit built for everyday journeys.',
+      href: '#catalog?category=bikes&type=hybrid', cta: 'Shop city and hybrid'
+    },
+    {
+      variant: 2, eyebrow: 'Parts and kit',
+      title: 'Keep every ride rolling.',
+      text: 'Tyres, brakes, frames and the accessories that keep a good bike going for years.',
+      href: '#catalog?category=parts', cta: 'Shop parts'
+    }
+  ];
+
+  const heroSlides = slides.map((s, i) => `
+    <div class="hero-slide" data-hero-slide="${i}"${i === 0 ? '' : ' hidden'}>
+      <a class="hero-slide-link" href="${s.href}">
+        <span class="hero-art">${heroArt(s.variant)}</span>
+        <div class="hero-copy">
+          <span class="eyebrow">${escapeHtml(s.eyebrow)}</span>
+          <h1 class="hero-title">${escapeHtml(s.title)}</h1>
+          <span class="hero-text">${escapeHtml(s.text)}</span>
+          <span class="btn btn-primary hero-cta">${escapeHtml(s.cta)}</span>
+        </div>
+      </a>
+    </div>`).join('');
+
+  const heroDots = slides.map((s, i) =>
+    `<button class="hero-dot" type="button" data-action="hero-slide" data-slide="${i}" aria-label="Show slide ${i + 1} of ${slides.length}" aria-current="${i === 0}"></button>`).join('');
+
+  // Two equal temporary brand promos. Final campaign content is undecided.
+  const promos = [
+    { brand: 'Northgate', variant: 1, text: 'Road and trail bikes built for long days out.' },
+    { brand: 'Larkhill', variant: 2, text: 'City bikes, parts and kit for everyday riding.' }
+  ];
+  const heroPromos = promos.map((p) => `
+    <a class="promo-card" data-promo="${escapeHtml(p.brand)}" href="#catalog?brand=${encodeURIComponent(p.brand)}">
+      <span class="promo-art">${heroArt(p.variant)}</span>
+      <span class="promo-copy">
+        <span class="eyebrow">Brand spotlight</span>
+        <span class="promo-title">${escapeHtml(p.brand)}</span>
+        <span class="promo-text">${escapeHtml(p.text)}</span>
+        <span class="btn btn-primary promo-cta">Shop ${escapeHtml(p.brand)}</span>
+      </span>
+    </a>`).join('');
+
+  const hero = `
+    <section class="hero hero-promo">
+      <div class="hero-main" data-hero-carousel aria-roledescription="carousel" aria-label="Featured highlights">
+        <div class="hero-slides" aria-live="polite">${heroSlides}</div>
+        <div class="hero-controls">
+          <button class="hero-arrow" type="button" data-action="hero-prev" aria-label="Previous slide">${iconChevron('left')}</button>
+          <button class="hero-arrow" type="button" data-action="hero-next" aria-label="Next slide">${iconChevron('right')}</button>
+          <div class="hero-dots">${heroDots}</div>
+        </div>
       </div>
-    </section>
+      <div class="hero-promos">${heroPromos}</div>
+    </section>`;
+
+  // Latest published articles, newest first; drafted records are excluded.
+  const latest = latestArticles(state, 3);
+  const latestSection = latest.length ? `
+    <section class="section latest">
+      <div class="section-head"><h2>From the journal</h2><a class="link" href="#journal">All articles</a></div>
+      <div class="grid grid-latest">
+        ${latest.map((a) => `
+          <a class="article-card latest-card" href="#journal?slug=${escapeHtml(a.slug)}">
+            <span class="article-art">${articleArt(a.artVariant)}</span>
+            <time class="article-date" datetime="${escapeHtml(a.publishedAt || '')}">${escapeHtml(formatArticleDate(a.publishedAt))}</time>
+            <h3 class="article-title">${escapeHtml(a.title)}</h3>
+            <p class="article-preview">${escapeHtml(a.body)}</p>
+          </a>`).join('')}
+      </div>
+    </section>` : '';
+
+  return `
+    ${hero}
 
     <section class="section">
       <div class="section-head"><h2>Find your bike</h2><p class="muted">Tell us your budget, riding and height, and we'll show the models that fit.</p></div>
@@ -145,7 +271,9 @@ export function home(seed, state, params, ctx = {}) {
     <section class="section">
       <div class="section-head"><h2>The workshop promise (draft)</h2></div>
       <p class="muted">This is illustrative marketing copy for layout review only. Nothing here is a real offer, price guarantee or service commitment.</p>
-    </section>`;
+    </section>
+
+    ${latestSection}`;
 }
 
 function contextReady(context) {
@@ -157,33 +285,76 @@ function availabilityLabel(context, availableInContext) {
   return availableInContext ? 'available here' : 'no stock in this context';
 }
 
+function wishlistHeart(state, model) {
+  const wishlisted = isWishlisted(state, model.id);
+  const label = (wishlisted ? 'Remove ' : 'Save ') + model.name + (wishlisted ? ' from' : ' to') + ' your wishlist';
+  return `<button class="wishlist-heart${wishlisted ? ' is-saved' : ''}" type="button" data-action="wishlist-toggle" data-model="${escapeHtml(model.id)}" aria-pressed="${wishlisted}" aria-label="${escapeHtml(label)}">${iconHeart()}</button>`;
+}
+
 function productCard(seed, state, model) {
   const summary = modelPriceSummary(seed, state, model, state.cart.context);
   const anyDiscount = summary.skus.some(discounted);
-  return `<a class="product-card" href="#product/${escapeHtml(model.id)}">
-    <div class="product-art">${modelArt(model, summary.chosenSku ? summary.chosenSku.colour : null)}</div>
+  return `<div class="product-card" data-model="${escapeHtml(model.id)}">
+    <div class="product-art-wrap">
+      <a class="product-art product-link" href="#product/${escapeHtml(model.id)}" aria-label="${escapeHtml(model.name)}">${modelArt(model, summary.chosenSku ? summary.chosenSku.colour : null)}</a>
+      ${wishlistHeart(state, model)}
+    </div>
     <div class="product-meta">
       <p class="product-brand">${escapeHtml(model.brand)}</p>
-      <h3>${escapeHtml(model.name)}</h3>
+      <h3><a class="product-link" href="#product/${escapeHtml(model.id)}">${escapeHtml(model.name)}</a></h3>
       <p class="product-price">From ${priceHtml(summary.chosenSku)}${anyDiscount ? ' <span class="tag">Reduced</span>' : ''}</p>
       <p class="muted small">${model.wheels ? escapeHtml(model.wheels) + ' &middot; ' : ''}${escapeHtml(model.type)} &middot; ${escapeHtml(availabilityLabel(state.cart.context, summary.availableInContext))}</p>
     </div>
-  </a>`;
+  </div>`;
 }
 
 // ---------------------------------------------------------------------------
 // P-02 Catalog
 // ---------------------------------------------------------------------------
 
+// Resolve a possibly repeated query value. `queryList` holds every repeated
+// value; a legacy single link is still honoured through the scalar `query`.
+function multiValue(query, queryList, key) {
+  const list = queryList && Array.isArray(queryList[key]) ? queryList[key].filter((v) => v !== '') : [];
+  if (list.length) return list;
+  const single = query[key];
+  return single ? [single] : [];
+}
+
+// One checkbox group. Values are OR'd inside the group; separate groups are
+// AND'ed together by the domain (one SKU must satisfy the whole conjunction).
+// Shows the first four values and reveals the rest behind a native "Show more"
+// disclosure; a selected value in the hidden part keeps it open after reload.
+function checkboxGroup(name, label, options, selected) {
+  const isSel = (v) => selected.includes(v);
+  const item = (o) => `<label class="check">
+    <input type="checkbox" name="${name}" value="${escapeHtml(o.value)}"${isSel(o.value) ? ' checked' : ''}>
+    <span class="check-label">${escapeHtml(o.label)}</span>
+    <span class="check-count">${o.count}</span>
+  </label>`;
+  const visible = options.slice(0, 4);
+  const hidden = options.slice(4);
+  const hiddenSelected = hidden.some((o) => isSel(o.value));
+  return `<fieldset class="filter-group">
+    <legend>${escapeHtml(label)}</legend>
+    <div class="check-list">${visible.map(item).join('')}</div>
+    ${hidden.length ? `<details class="filter-more"${hiddenSelected ? ' open' : ''}>
+      <summary>Show more (${hidden.length})</summary>
+      <div class="check-list">${hidden.map(item).join('')}</div>
+    </details>` : ''}
+  </fieldset>`;
+}
+
 export function catalog(seed, state, params, ctx = {}) {
   const q = params.query || {};
+  const ql = params.queryList || {};
   const context = state.cart.context;
   const criteria = {
-    categoryId: q.category || '',
-    brand: q.brand || '',
-    type: q.type || '',
-    wheels: q.wheels || '',
-    frameSize: q.frameSize || '',
+    categoryId: multiValue(q, ql, 'category'),
+    brand: multiValue(q, ql, 'brand'),
+    type: multiValue(q, ql, 'type'),
+    wheels: multiValue(q, ql, 'wheels'),
+    frameSize: multiValue(q, ql, 'frameSize'),
     priceMax: q.priceMax ? Number(q.priceMax) : null,
     heightCm: q.heightCm ? Number(q.heightCm) : null,
     inStockOnly: q.inStock === '1'
@@ -197,17 +368,24 @@ export function catalog(seed, state, params, ctx = {}) {
   if (q.sort === 'price-asc') results.sort((a, b) => a.fromPrice - b.fromPrice);
   else if (q.sort === 'price-desc') results.sort((a, b) => b.fromPrice - a.fromPrice);
 
-  const typeOptions = [...new Set(seed.models.filter((m) => m.published && m.categoryId === 'bikes').map((m) => m.type))].sort();
+  const modelCount = (pred) => seed.models.filter((m) => m.published && pred(m)).length;
+  const typeOptions = [...new Set(seed.models.filter((m) => m.published && m.type).map((m) => m.type))].sort();
   const wheelOptions = [...new Set(seed.models.filter((m) => m.published && m.wheels).map((m) => m.wheels))].sort();
   const frameOptions = [...new Set(seed.models.filter((m) => m.published && m.sizeChart).flatMap((m) => m.sizeChart.map((r) => r.frameSize)))].sort();
 
+  const categoryOpts = seed.categories.map((c) => ({ value: c.id, label: c.name, count: modelCount((m) => m.categoryId === c.id) }));
+  const brandOpts = seed.brands.map((b) => ({ value: b, label: b, count: modelCount((m) => m.brand === b) }));
+  const typeOpts = typeOptions.map((t) => ({ value: t, label: t, count: modelCount((m) => m.type === t) }));
+  const wheelOpts = wheelOptions.map((w) => ({ value: w, label: w, count: modelCount((m) => m.wheels === w) }));
+  const frameOpts = frameOptions.map((f) => ({ value: f, label: f, count: modelCount((m) => m.sizeChart && m.sizeChart.some((r) => r.frameSize === f)) }));
+
   const active = [];
   if (q.q) active.push('Search: ' + q.q);
-  if (criteria.categoryId) active.push('Category: ' + criteria.categoryId);
-  if (criteria.brand) active.push('Brand: ' + criteria.brand);
-  if (criteria.type) active.push('Type: ' + criteria.type);
-  if (criteria.wheels) active.push('Wheels: ' + criteria.wheels);
-  if (criteria.frameSize) active.push('Frame: ' + criteria.frameSize);
+  const properties = [
+    ['Category', criteria.categoryId], ['Brand', criteria.brand],
+    ['Type', criteria.type], ['Wheels', criteria.wheels], ['Frame', criteria.frameSize]
+  ];
+  for (const [name, vals] of properties) for (const v of vals) active.push(name + ': ' + v);
   if (criteria.priceMax) active.push('Max ' + formatGBP(criteria.priceMax));
   if (criteria.heightCm) active.push('Height ' + criteria.heightCm + ' cm');
   if (criteria.inStockOnly) active.push('In stock only');
@@ -216,59 +394,43 @@ export function catalog(seed, state, params, ctx = {}) {
     : '';
 
   const filters = `
-    <form class="catalog-filters" data-catalog-form aria-label="Catalogue filters">
-      <div class="filter-row">
-        <div class="finder-field">
-          <label for="c-q">Search</label>
-          <input id="c-q" name="q" type="search" value="${escapeHtml(q.q || '')}" placeholder="Name, brand or SKU">
-        </div>
-        <div class="finder-field">
-          <label for="c-category">Category</label>
-          <select id="c-category" name="category"><option value="">All</option>${seed.categories.map((c) => `<option value="${c.id}"${q.category === c.id ? ' selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select>
-        </div>
-        <div class="finder-field">
-          <label for="c-brand">Brand</label>
-          <select id="c-brand" name="brand"><option value="">Any</option>${seed.brands.map((b) => `<option value="${escapeHtml(b)}"${q.brand === b ? ' selected' : ''}>${escapeHtml(b)}</option>`).join('')}</select>
-        </div>
-        <div class="finder-field">
-          <label for="c-type">Type</label>
-          <select id="c-type" name="type"><option value="">Any</option>${typeOptions.map((t) => `<option value="${escapeHtml(t)}"${q.type === t ? ' selected' : ''}>${escapeHtml(t)}</option>`).join('')}</select>
-        </div>
-        <div class="finder-field">
-          <label for="c-wheels">Wheels</label>
-          <select id="c-wheels" name="wheels"><option value="">Any</option>${wheelOptions.map((w) => `<option value="${escapeHtml(w)}"${q.wheels === w ? ' selected' : ''}>${escapeHtml(w)}</option>`).join('')}</select>
-        </div>
-        <div class="finder-field">
-          <label for="c-frame">Frame size</label>
-          <select id="c-frame" name="frameSize"><option value="">Any</option>${frameOptions.map((f) => `<option value="${escapeHtml(f)}"${q.frameSize === f ? ' selected' : ''}>${escapeHtml(f)}</option>`).join('')}</select>
-        </div>
-        <div class="finder-field">
-          <label for="c-price">Max price</label>
-          <select id="c-price" name="priceMax"><option value="">Any</option>${[100000, 150000, 200000, 250000].map((p) => `<option value="${p}"${String(q.priceMax) === String(p) ? ' selected' : ''}>${formatGBP(p)}</option>`).join('')}</select>
-        </div>
-        <div class="finder-field">
-          <label for="c-height">Your height (cm)</label>
-          <input id="c-height" name="heightCm" type="number" min="100" max="220" inputmode="numeric" value="${escapeHtml(q.heightCm || '')}">
-        </div>
-        <div class="finder-field">
-          <label for="c-sort">Sort</label>
-          <select id="c-sort" name="sort">
-            <option value="">Recommended</option>
-            <option value="price-asc"${q.sort === 'price-asc' ? ' selected' : ''}>Price: low to high</option>
-            <option value="price-desc"${q.sort === 'price-desc' ? ' selected' : ''}>Price: high to low</option>
-          </select>
-        </div>
-        <div class="finder-field checkbox">
-          <input id="c-stock" name="inStock" type="checkbox" value="1"${q.inStock === '1' ? ' checked' : ''}>
-          <label for="c-stock">In stock in current context</label>
-        </div>
+    <form id="catalog-form" class="catalog-filters" data-catalog-form aria-label="Catalogue filters">
+      <div class="finder-field">
+        <label for="c-q">Search</label>
+        <input id="c-q" name="q" type="search" value="${escapeHtml(q.q || '')}" placeholder="Name, brand or SKU">
+      </div>
+      ${checkboxGroup('category', 'Category', categoryOpts, criteria.categoryId)}
+      ${checkboxGroup('brand', 'Brand', brandOpts, criteria.brand)}
+      ${checkboxGroup('type', 'Type', typeOpts, criteria.type)}
+      ${checkboxGroup('wheels', 'Wheels', wheelOpts, criteria.wheels)}
+      ${checkboxGroup('frameSize', 'Frame size', frameOpts, criteria.frameSize)}
+      <div class="finder-field">
+        <label for="c-price">Max price (&pound;)</label>
+        <input id="c-price" name="priceMax" type="number" min="0" step="0.01" inputmode="decimal" value="${q.priceMax ? (Number(q.priceMax) / 100) : ''}" placeholder="e.g. 1500">
+      </div>
+      <div class="finder-field">
+        <label for="c-height">Your height (cm)</label>
+        <input id="c-height" name="heightCm" type="number" min="100" max="220" inputmode="numeric" value="${escapeHtml(q.heightCm || '')}">
+      </div>
+      <div class="finder-field checkbox">
+        <input id="c-stock" name="inStock" type="checkbox" value="1"${q.inStock === '1' ? ' checked' : ''}>
+        <label for="c-stock">In stock in current context</label>
       </div>
       <div class="filter-actions">
-        <p class="finder-count" aria-live="polite"><strong>${results.length}</strong> models match (counted once)</p>
-        <button class="btn btn-primary" type="submit">Apply</button>
+        <button class="btn btn-primary" type="submit">Apply filters</button>
         <a class="btn btn-ghost" href="#catalog">Clear</a>
       </div>
     </form>`;
+
+  const sortField = `
+    <div class="sort-field">
+      <label for="c-sort">Sort</label>
+      <select id="c-sort" name="sort" form="catalog-form" data-auto-submit>
+        <option value="">Recommended</option>
+        <option value="price-asc"${q.sort === 'price-asc' ? ' selected' : ''}>Price: low to high</option>
+        <option value="price-desc"${q.sort === 'price-desc' ? ' selected' : ''}>Price: high to low</option>
+      </select>
+    </div>`;
 
   const body = results.length
     ? `<div class="grid grid-products">${results.map((r) => catalogCard(seed, state, r)).join('')}</div>`
@@ -279,24 +441,40 @@ export function catalog(seed, state, params, ctx = {}) {
       <h1>Catalogue</h1>
       <p class="muted">Showing results for <strong>${escapeHtml(contextLabel(seed, context))}</strong>. Change it in the header for your next purchase.</p>
     </header>
-    ${filters}
-    ${activeSummary}
-    ${body}`;
+    <div class="catalog-layout">
+      <aside class="catalog-sidebar" id="catalog-filters" aria-label="Catalogue filters">
+        <div class="drawer-head"><h2>Filters</h2><button class="btn btn-ghost" type="button" data-action="close-filters" aria-label="Close filters">${iconClose()}</button></div>
+        ${filters}
+      </aside>
+      <div class="catalog-results">
+        <div class="catalog-toolbar">
+          <button class="btn filter-open-btn" type="button" data-action="open-filters" aria-controls="catalog-filters" aria-expanded="false">${iconFilter()} Filter</button>
+          <p class="finder-count" aria-live="polite"><strong>${results.length}</strong> models match (counted once)</p>
+          ${sortField}
+        </div>
+        ${activeSummary}
+        ${body}
+      </div>
+    </div>
+    <div class="filter-backdrop" data-filter-backdrop hidden></div>`;
 }
 
 function catalogCard(seed, state, r) {
   const m = r.model;
   const anyDiscount = r.matchingSkus.some(discounted);
   const label = availabilityLabel(state.cart.context, r.availableInContext);
-  return `<a class="product-card" href="#product/${escapeHtml(m.id)}">
-    <div class="product-art">${modelArt(m, r.chosenSku ? r.chosenSku.colour : null)}</div>
+  return `<div class="product-card" data-model="${escapeHtml(m.id)}">
+    <div class="product-art-wrap">
+      <a class="product-art product-link" href="#product/${escapeHtml(m.id)}" aria-label="${escapeHtml(m.name)}">${modelArt(m, r.chosenSku ? r.chosenSku.colour : null)}</a>
+      ${wishlistHeart(state, m)}
+    </div>
     <div class="product-meta">
       <p class="product-brand">${escapeHtml(m.brand)}</p>
-      <h3>${escapeHtml(m.name)}</h3>
+      <h3><a class="product-link" href="#product/${escapeHtml(m.id)}">${escapeHtml(m.name)}</a></h3>
       <p class="product-price">From ${priceHtml(r.chosenSku)}${anyDiscount ? ' <span class="tag">Reduced</span>' : ''}</p>
       <p class="muted small">${m.wheels ? escapeHtml(m.wheels) + ' &middot; ' : ''}${escapeHtml(m.type)} &middot; ${escapeHtml(label)}</p>
     </div>
-  </a>`;
+  </div>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -312,84 +490,185 @@ export function product(seed, state, params, ctx = {}) {
   const selected = skus.find((s) => s.id === ctx.selectedSkuId) || skus[0];
   const context = state.cart.context;
 
-  const sizeOptions = [...new Set(skus.map((s) => s.size || s.frameSize).filter(Boolean))];
+  const sizeLabel = model.categoryId === 'bikes' ? 'Frame size' : 'Size';
   const colourOptions = [...new Set(skus.map((s) => s.colour))];
+  const sizeOptions = [...new Set(skus.map((s) => skuOptionValue(s)))];
+  const selectedSize = selected ? skuOptionValue(selected) : null;
 
-  let chart = '';
-  if (model.categoryId === 'bikes') {
-    if (model.sizeChart) {
-      chart = `<section class="panel"><h2>Frame size guide (draft)</h2>
-        <table class="data-table"><caption>Indicative rider height for each frame size. Draft demo values.</caption>
-        <thead><tr><th scope="col">Frame size</th><th scope="col">Rider height</th></tr></thead>
-        <tbody>${model.sizeChart.map((r) => `<tr><th scope="row">${escapeHtml(r.frameSize)}</th><td>${r.minCm}&ndash;${r.maxCm} cm</td></tr>`).join('')}</tbody></table></section>`;
-    } else {
-      chart = `<section class="panel notice notice-warn"><h2>No size chart published</h2>
-        <p>This model has no height chart. We will not guess your size &mdash; choose a variant directly or contact us.</p></section>`;
-    }
-  }
+  const avail = selected ? availableQuantity(seed, state, selected.id, context) : 0;
+  const contextChosen = !!context && (context.type === 'delivery' || !!context.storeId);
+  const unavailable = contextChosen && avail <= 0;
+
+  // Gallery: distinct local demo views; colour follows the selected SKU.
+  const views = galleryViews(model, selected ? selected.colour : null);
+  const activeView = Math.min(Math.max(0, Number(ctx.galleryIndex) || 0), views.length - 1);
+  const mainView = views[activeView];
+  const multiView = views.length > 1;
+  const gallery = `<div class="product-gallery" data-gallery data-count="${views.length}">
+    <div class="gallery-main">
+      <button class="gallery-open" type="button" data-action="open-gallery" aria-label="View larger images">${mainView.svg}</button>
+      ${wishlistHeart(state, model)}
+    </div>
+    ${multiView ? `<div class="gallery-thumbs">${views.map((v, i) =>
+      `<button class="gallery-thumb${i === activeView ? ' is-active' : ''}" type="button" data-action="gallery-view" data-index="${i}" aria-label="${escapeHtml(v.label)}" aria-pressed="${i === activeView}">${v.svg}</button>`).join('')}</div>` : ''}
+  </div>`;
+
+  // Model-level rating (never per SKU). Empty is honestly "0 Ratings".
+  const summary = reviewSummary(state, model.id);
+  const ratingText = summary.count === 0
+    ? '<span class="rating-count">0 Ratings</span>'
+    : `<span class="rating-count">(${summary.average.toFixed(1)}) - ${summary.count} Ratings</span>`;
+
+  const related = recommendModels(seed, state, model.id);
+  const relatedBlock = related.length
+    ? `<section class="section related">
+        <div class="section-head">
+          <h2>Related products</h2>
+          <p class="muted small">Chosen by name similarity only &mdash; this is not a statement that they fit or are compatible with ${escapeHtml(model.name)}.</p>
+        </div>
+        <div class="grid grid-products">${related.map((m) => productCard(seed, state, m)).join('')}</div>
+      </section>`
+    : '';
+
+  const activeTab = ['description', 'specifications', 'reviews', 'manufacturer'].includes(ctx.tab)
+    ? ctx.tab : 'description';
+
+  const descriptionPanel = `
+    <p>${escapeHtml(model.description)}</p>
+    ${model.specs.length ? `<h3>Features</h3><ul class="feature-list">${model.specs.map((s) => `<li><strong>${escapeHtml(s.label)}:</strong> ${escapeHtml(s.value)}</li>`).join('')}</ul>` : ''}
+    ${model.categoryId === 'bikes'
+      ? (model.sizeChart
+        ? `<h3>Sizes</h3><table class="data-table"><caption>Indicative rider height for each frame size. Draft demo values.</caption>
+            <thead><tr><th scope="col">Frame size</th><th scope="col">Rider height</th></tr></thead>
+            <tbody>${model.sizeChart.map((r) => `<tr><th scope="row">${escapeHtml(r.frameSize)}</th><td>${r.minCm}&ndash;${r.maxCm} cm</td></tr>`).join('')}</tbody></table>`
+        : `<h3>Sizes</h3><p class="notice notice-warn">This model has no height chart. We will not guess your size &mdash; choose a variant directly or contact us.</p>`)
+      : (sizeOptions.length
+        ? `<h3>Sizes</h3><p>Available in ${escapeHtml(sizeOptions.join(', '))}.</p>`
+        : '')}`;
+
+  const specificationsPanel = `
+    <table class="data-table">
+      <caption>Full available specification for ${escapeHtml(model.name)}. Demo data only.</caption>
+      <tbody>${model.specs.map((s) => `<tr><th scope="row">${escapeHtml(s.label)}</th><td>${escapeHtml(s.value)}</td></tr>`).join('')}</tbody>
+    </table>`;
+
+  const rp = reviewPage(state, model.id, ctx.reviewPage || 1, 5);
+  const reviewItems = rp.items.length
+    ? rp.items.map((r) => `<li class="review-item">
+        <div class="review-head">${stars(r.rating, r.rating + ' out of 5')}<time class="review-date">${escapeHtml(r.createdAt)}</time></div>
+        <h3 class="review-title">${escapeHtml(r.title)}</h3>
+        ${r.description ? `<p class="review-desc">${escapeHtml(r.description)}</p>` : ''}
+        <p class="muted small">${escapeHtml(r.author || 'Demo customer')}</p>
+      </li>`).join('')
+    : '<li class="muted">No reviews yet. Be the first to review this model.</li>';
+  const pagination = rp.pageCount > 1
+    ? `<nav class="review-pagination" aria-label="Review pages">${Array.from({ length: rp.pageCount }, (_, i) => i + 1)
+        .map((n) => `<button class="page-btn${n === rp.page ? ' is-active' : ''}" type="button" data-action="review-page" data-page="${n}" aria-current="${n === rp.page}">${n}</button>`).join('')}</nav>`
+    : '';
+  const reviewsPanel = `
+    <div class="reviews-summary">
+      <div class="reviews-score">
+        ${stars(summary.average, summary.count === 0 ? 'No ratings yet' : summary.average + ' out of 5')}
+        ${summary.count === 0 ? '<span class="rating-count">0 Ratings</span>' : `<span class="rating-count">(${summary.average.toFixed(1)}) - ${summary.count} Ratings</span>`}
+      </div>
+      <button class="btn btn-primary" type="button" data-action="open-review">Leave a review</button>
+    </div>
+    <ul class="review-list">${reviewItems}</ul>
+    ${pagination}`;
+
+  const manufacturerPanel = `
+    <h3>${escapeHtml(model.brand)}</h3>
+    <p>${escapeHtml(BRAND_PROFILES[model.brand] || 'A synthetic demonstration brand used in this prototype.')}</p>`;
+
+  const tabs = [
+    { id: 'description', label: 'Description', panel: descriptionPanel },
+    { id: 'specifications', label: 'Specifications', panel: specificationsPanel },
+    { id: 'reviews', label: 'Reviews', panel: reviewsPanel },
+    { id: 'manufacturer', label: 'Manufacturer', panel: manufacturerPanel }
+  ];
+  const tabsBlock = `<section class="product-tabs">
+    <div class="tab-list" role="tablist" aria-label="Product information">
+      ${tabs.map((t) => `<button class="tab" role="tab" type="button" id="tab-btn-${t.id}" data-action="product-tab" data-tab="${t.id}" aria-selected="${activeTab === t.id}" aria-controls="tab-${t.id}">${escapeHtml(t.label)}${t.id === 'reviews' && summary.count ? ` (${summary.count})` : ''}</button>`).join('')}
+    </div>
+    <div class="tab-panels">
+      ${tabs.map((t) => `<div class="tab-panel" id="tab-${t.id}" role="tabpanel" aria-labelledby="tab-btn-${t.id}"${activeTab === t.id ? '' : ' hidden'}>${t.panel}</div>`).join('')}
+    </div>
+  </section>`;
 
   return `
-    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="#catalog">Catalogue</a> / <span>${escapeHtml(model.name)}</span></nav>
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="#catalog">Catalogue</a> / <a href="#catalog?category=${escapeHtml(model.categoryId)}">${escapeHtml(model.categoryId)}</a> / <span>${escapeHtml(model.name)}</span></nav>
     <article class="product-detail">
-      <div class="product-detail-art">${modelArt(model, selected ? selected.colour : null)}</div>
+      <div class="product-detail-art">${gallery}</div>
       <div class="product-detail-info">
         <p class="product-brand">${escapeHtml(model.brand)}</p>
         <h1>${escapeHtml(model.name)}</h1>
-        <p class="lede">${escapeHtml(model.description)}</p>
-        <p class="product-price-lg">${priceHtml(selected)} <span class="muted small">(GBP, VAT included)</span></p>
-        ${stockText(seed, state, selected, context)}
+        <p class="product-rating" data-model-rating>${stars(summary.average, summary.count === 0 ? 'No ratings yet' : summary.average + ' out of 5')} ${ratingText}</p>
         <div class="sku-select">
-          <fieldset>
-            <legend>Colour</legend>
-            <div class="chip-row">
-              ${colourOptions.map((col) => {
-                const s = skus.find((x) => x.colour === col);
-                return `<button type="button" class="chip${selected && selected.colour === col ? ' chip-active' : ''}" data-action="select-sku" data-sku="${escapeHtml(s.id)}" aria-pressed="${selected && selected.colour === col}">
-                  <span class="swatch" style="background:${colourHex(col)}"></span>${escapeHtml(col)}</button>`;
-              }).join('')}
-            </div>
-          </fieldset>
-          ${sizeOptions.length > 1 ? `<fieldset>
-            <legend>${model.categoryId === 'bikes' ? 'Frame size' : 'Size'}</legend>
-            <div class="chip-row">
-              ${sizeOptions.map((sz) => {
-                const s = skus.find((x) => (x.size || x.frameSize) === sz);
-                return `<button type="button" class="chip${selected && (selected.size === sz || selected.frameSize === sz) ? ' chip-active' : ''}" data-action="select-sku" data-sku="${escapeHtml(s.id)}" aria-pressed="${selected && (selected.size === sz || selected.frameSize === sz)}">${escapeHtml(sz)}</button>`;
-              }).join('')}
-            </div>
-          </fieldset>` : ''}
-        </div>
-        <div class="buy-row">
-          <div class="qty-control">
-            <label for="p-qty">Quantity</label>
-            <input id="p-qty" type="number" min="1" step="1" value="1" inputmode="numeric">
+          <div class="field">
+            <label for="p-colour">Colour</label>
+            <select id="p-colour" data-action="select-colour">
+              ${colourOptions.map((col) => `<option value="${escapeHtml(col)}"${selected && selected.colour === col ? ' selected' : ''}>${escapeHtml(col)}</option>`).join('')}
+            </select>
           </div>
-          <button class="btn btn-primary" data-action="add-to-cart" data-sku="${escapeHtml(selected.id)}">Add to cart</button>
+          <div class="field">
+            <label for="p-size">${escapeHtml(sizeLabel)}</label>
+            <select id="p-size" data-action="select-size">
+              ${sizeOptions.map((sz) => `<option value="${escapeHtml(sz)}"${selectedSize === sz ? ' selected' : ''}>${escapeHtml(sz)}</option>`).join('')}
+            </select>
+          </div>
         </div>
-        <p class="muted small">Adding to the cart does not reserve stock. The cart keeps your selection between pages.</p>
+        <div class="price-stock-row">
+          <p class="product-price-lg">${priceHtml(selected)} <span class="muted small">(GBP, VAT included)</span></p>
+          ${stockText(seed, state, selected, context)}
+        </div>
+        ${ctx.skuNote ? `<p class="notice notice-info" role="status">${escapeHtml(ctx.skuNote)}</p>` : ''}
+        <div class="buy-row">
+          <button class="btn btn-primary" data-action="add-to-cart" data-sku="${escapeHtml(selected.id)}"${unavailable ? ' disabled aria-disabled="true"' : ''}>${iconCart()} Add to cart</button>
+          <a class="btn" href="#cart">${iconCart()} Go to cart</a>
+        </div>
+        ${unavailable ? `<p class="inline-error" role="alert">Not available in this fulfilment context. Choose another store or delivery in the header.</p>` : ''}
+        <p class="muted small">Add to cart adds one unit; change the quantity in your cart. Adding to the cart does not reserve stock, and your selection is kept between pages.</p>
       </div>
     </article>
 
-    <section class="panel">
-      <h2>Specifications</h2>
-      <table class="data-table">
-        <tbody>${model.specs.map((s) => `<tr><th scope="row">${escapeHtml(s.label)}</th><td>${escapeHtml(s.value)}</td></tr>`).join('')}</tbody>
-      </table>
-    </section>
-    ${chart}`;
+    ${tabsBlock}
+    ${relatedBlock}`;
 }
 
 // ---------------------------------------------------------------------------
 // P-04 Cart
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// P-04/P-05 Cart and checkout (one unified view)
+// ---------------------------------------------------------------------------
+
+function checkoutFormDefaults() {
+  return {
+    contact: { name: '', email: '', phone: '' },
+    address: { line1: '', line2: '', city: '', postcode: '', regionId: 'england' }
+  };
+}
+
 export function cart(seed, state, params, ctx = {}) {
   const c = state.cart;
-  const totals = cartTotals(seed, state, c, { address: c.context.address });
   if (!c.items.length) {
     return `<header class="page-head"><h1>Your cart</h1></header>
-      <div class="empty-state"><p>Your cart is empty.</p><p><a class="btn btn-primary" href="#catalog">Browse the catalogue</a></p></div>`;
+      <div class="empty-state"><p>Your cart is empty, so there is nothing to check out.</p><p><a class="btn btn-primary" href="#catalog">Browse the catalogue</a></p></div>`;
   }
+  const form = ctx.form || checkoutFormDefaults();
+  const rawErrors = ctx.errors || {};
+  const errors = { ...rawErrors };
+  // Normalise contact error keys so the view's contact.* lookups work.
+  if (rawErrors.name) errors['contact.name'] = rawErrors.name;
+  if (rawErrors.email) errors['contact.email'] = rawErrors.email;
+  if (rawErrors.phone) errors['contact.phone'] = rawErrors.phone;
+  const err = (k) => errors[k] ? `<p class="field-error" id="err-${k.replace(/\./g, '-')}" role="alert">${escapeHtml(errors[k])}</p>` : '';
+  const aria = (k) => errors[k] ? ` aria-invalid="true" aria-describedby="err-${k.replace(/\./g, '-')}"` : '';
+
+  const gate = checkoutGate(seed, state, c, form);
+  const { totals, pricedTotals, isDelivery, shippingPending, shippingBlocked, blocked } = gate;
+  const isCollection = !isDelivery;
 
   const rows = totals.lines.map((l) => {
     const sku = l.sku;
@@ -415,66 +694,6 @@ export function cart(seed, state, params, ctx = {}) {
     </tr>`;
   }).join('');
 
-  // A delivery cart cannot price shipping until an address is supplied at
-  // checkout. That is "pending", not an unavailable/invalid tariff, so it must
-  // not block checkout; only a real shipping problem (excluded/missing tariff
-  // for a supplied address) blocks. An unavailable row still blocks the cart.
-  const isDelivery = c.context.type === 'delivery';
-  const shippingPending = isDelivery && totals.shippingReason === 'no_address';
-  const shippingBlocked = isDelivery && !totals.shippingOk && !shippingPending;
-  const blocked = !totals.allAvailable || shippingBlocked;
-
-  return `
-    <header class="page-head"><h1>Your cart</h1>
-      <p class="muted">Fulfilment context: <strong>${escapeHtml(contextLabel(seed, c.context))}</strong>. Change it in the header &mdash; unavailable rows are kept with a warning.</p>
-    </header>
-    <table class="cart-table">
-      <thead><tr><th scope="col">Product</th><th scope="col">Price</th><th scope="col">Quantity</th><th scope="col">Total</th><th scope="col">Remove</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-
-    ${!totals.allAvailable ? `<p class="notice notice-warn" role="alert">Some items are not available in the chosen fulfilment context. Checkout is blocked until every row is available.</p>` : ''}
-    ${shippingBlocked ? `<p class="notice notice-warn" role="alert">Delivery cannot be priced for this address. Choose another address or a store for collection.</p>` : ''}
-
-    <section class="cart-summary panel">
-      <dl>
-        <dt>Subtotal</dt><dd>${formatGBP(totals.subtotalGross)}</dd>
-        <dt>Delivery</dt><dd>${!isDelivery ? 'Free &mdash; pay in store' : (shippingPending ? 'Calculated at checkout' : (totals.shippingOk ? formatGBP(totals.shippingGross) : 'Not configured'))}</dd>
-        <dt class="total">${shippingPending ? 'Total before delivery (VAT included)' : 'Total (VAT included)'}</dt><dd class="total">${formatGBP(totals.totalGross)}</dd>
-      </dl>
-      <p class="muted small">Includes ${formatGBP(totals.vatGross)} VAT (synthetic demo rates).${shippingPending ? ' Delivery cost is calculated at checkout from the address you enter; availability is already checked.' : ''}</p>
-      <p>
-        ${blocked
-          ? `<button class="btn btn-primary" type="button" disabled aria-disabled="true">Proceed to checkout</button>`
-          : `<a class="btn btn-primary" href="#checkout">Proceed to checkout</a>`}
-        <a class="btn btn-ghost" href="#catalog">Continue shopping</a>
-      </p>
-    </section>`;
-}
-
-// ---------------------------------------------------------------------------
-// P-05 Checkout (one page)
-// ---------------------------------------------------------------------------
-
-export function checkout(seed, state, params, ctx = {}) {
-  const c = state.cart;
-  if (!c.items.length) {
-    return `<header class="page-head"><h1>Checkout</h1></header>
-      <div class="empty-state"><p>Your cart is empty, so there is nothing to check out.</p><p><a class="btn" href="#catalog">Browse the catalogue</a></p></div>`;
-  }
-  const form = ctx.form || { contact: { name: '', email: '', phone: '' }, address: { line1: '', line2: '', city: '', postcode: '', regionId: 'england' } };
-  const rawErrors = ctx.errors || {};
-  const errors = { ...rawErrors };
-  // Normalise contact error keys so the view's contact.* lookups work.
-  if (rawErrors.name) errors['contact.name'] = rawErrors.name;
-  if (rawErrors.email) errors['contact.email'] = rawErrors.email;
-  if (rawErrors.phone) errors['contact.phone'] = rawErrors.phone;
-  const err = (k) => errors[k] ? `<p class="field-error" id="err-${k.replace(/\./g, '-')}" role="alert">${escapeHtml(errors[k])}</p>` : '';
-  const aria = (k) => errors[k] ? ` aria-invalid="true" aria-describedby="err-${k.replace(/\./g, '-')}"` : '';
-
-  const totals = cartTotals(seed, state, c, { address: form.address });
-  const isCollection = c.context.type === 'collection';
-
   let reorderPreview = '';
   if (state.reorderDraft && state.reorderDraft.oldOrderId) {
     const changes = reorderChanges(seed, state, state.reorderDraft.oldOrderId);
@@ -484,37 +703,42 @@ export function checkout(seed, state, params, ctx = {}) {
     </div>`;
   }
 
-  const summary = `<aside class="panel checkout-summary">
+  const summary = `<aside class="panel checkout-summary" aria-label="Order summary">
     <h2>Order summary</h2>
     <ul class="summary-lines">
       ${totals.lines.map((l) => `<li><span>${escapeHtml(l.model ? l.model.name : 'Item')} &times; ${l.qty}</span><span>${formatGBP(l.lineGross)}</span></li>`).join('')}
     </ul>
     <dl>
-      <dt>Subtotal</dt><dd>${formatGBP(totals.subtotalGross)}</dd>
-      <dt>${isCollection ? 'Collection' : 'Delivery'}</dt><dd>${isCollection ? 'Pay in store' : (totals.shippingOk ? formatGBP(totals.shippingGross) : 'Not configured')}</dd>
-      <dt class="total">Total (VAT included)</dt><dd class="total">${formatGBP(totals.totalGross)}</dd>
+      <dt>Subtotal</dt><dd>${formatGBP(pricedTotals.subtotalGross)}</dd>
+      <dt>${isCollection ? 'Collection' : 'Delivery'}</dt><dd data-summary-delivery>${!isDelivery ? 'Pay in store' : (shippingPending ? 'Calculated at checkout' : (totals.shippingOk ? formatGBP(totals.shippingGross) : 'Not configured'))}</dd>
+      <dt class="total" data-summary-total-label>${shippingPending ? 'Total before delivery (VAT included)' : 'Total (VAT included)'}</dt><dd class="total" data-summary-total>${formatGBP(pricedTotals.totalGross)}</dd>
     </dl>
-    <p class="muted small">Includes ${formatGBP(totals.vatGross)} VAT. Return conditions are summarised in <a href="#page/returns">Returns</a>.</p>
+    <p class="muted small">Includes <span data-summary-vat>${formatGBP(pricedTotals.vatGross)}</span> VAT (synthetic demo rates).${shippingPending ? ' Delivery cost is calculated from the address you enter; availability is already checked.' : ''}</p>
+    <p class="action-row">
+      <button class="btn btn-primary checkout-summary-submit" type="submit" form="checkout-form" data-checkout-submit${blocked ? ' disabled aria-disabled="true"' : ''}>Place order</button>
+      <a class="btn btn-ghost" href="#catalog">Continue shopping</a>
+    </p>
+    <p class="muted small checkout-summary-link"><a href="#checkout">Proceed to checkout</a></p>
   </aside>`;
 
   const fulfilmentField = `<fieldset class="panel">
     <legend>Fulfilment</legend>
     <div class="radio-row">
-      <label class="radio"><input type="radio" name="fulfilment" value="delivery"${!isCollection ? ' checked' : ''} data-action="checkout-fulfilment"> Delivery to an address</label>
-      <label class="radio"><input type="radio" name="fulfilment" value="collection"${isCollection ? ' checked' : ''} data-action="checkout-fulfilment"> Collect from a store (pay in store)</label>
+      <label class="radio"><input type="radio" name="fulfilment" value="delivery"${!isCollection ? ' checked' : ''} data-action="checkout-fulfilment"> ${iconTruck()} Delivery to an address</label>
+      <label class="radio"><input type="radio" name="fulfilment" value="collection"${isCollection ? ' checked' : ''} data-action="checkout-fulfilment"> ${iconStore()} Collect from a store (pay in store)</label>
     </div>
   </fieldset>`;
 
   const addressFields = `<div class="panel" ${isCollection ? 'hidden' : ''} data-address-fields>
     <h2>Delivery address</h2>
     ${err('address.line1')}
-    <div class="field"><label for="co-line1">Address line 1</label><input id="co-line1" name="line1" value="${escapeHtml(form.address.line1 || '')}"${aria('address.line1')}></div>
+    <div class="field"><label for="co-line1">Address line 1</label><input id="co-line1" name="line1" autocomplete="address-line1" value="${escapeHtml(form.address.line1 || '')}"${aria('address.line1')}></div>
     ${err('address.line2')}
-    <div class="field"><label for="co-line2">Address line 2 (optional)</label><input id="co-line2" name="line2" value="${escapeHtml(form.address.line2 || '')}"></div>
+    <div class="field"><label for="co-line2">Address line 2 (optional)</label><input id="co-line2" name="line2" autocomplete="address-line2" value="${escapeHtml(form.address.line2 || '')}"></div>
     ${err('address.city')}
-    <div class="field"><label for="co-city">Town or city</label><input id="co-city" name="city" value="${escapeHtml(form.address.city || '')}"${aria('address.city')}></div>
+    <div class="field"><label for="co-city">Town or city</label><input id="co-city" name="city" autocomplete="address-level2" value="${escapeHtml(form.address.city || '')}"${aria('address.city')}></div>
     ${err('address.postcode')}
-    <div class="field"><label for="co-postcode">Postcode</label><input id="co-postcode" name="postcode" value="${escapeHtml(form.address.postcode || '')}"${aria('address.postcode')}></div>
+    <div class="field"><label for="co-postcode">Postcode</label><input id="co-postcode" name="postcode" autocomplete="postal-code" value="${escapeHtml(form.address.postcode || '')}"${aria('address.postcode')}></div>
     ${err('address.regionId')}
     <div class="field"><label for="co-region">Region</label>
       <select id="co-region" name="regionId"${aria('address.regionId')}>
@@ -537,11 +761,22 @@ export function checkout(seed, state, params, ctx = {}) {
   </div>`;
 
   return `
-    <header class="page-head"><h1>Checkout</h1><p class="muted">Guest checkout &mdash; no account needed. One page, with errors shown beside each field.</p></header>
+    <header class="page-head"><h1>Your cart and checkout</h1>
+      <p class="muted">Guest checkout &mdash; no account needed. Fulfilment context: <strong>${escapeHtml(contextLabel(seed, c.context))}</strong>; change it in the header and unavailable rows are kept with a warning.</p>
+    </header>
     ${reorderPreview}
-    <form class="checkout-form" data-checkout-form novalidate>
-      <div class="checkout-grid">
-        <div class="checkout-main">
+    <div class="cart-layout">
+      <div class="cart-rows">
+        <table class="cart-table">
+          <thead><tr><th scope="col">Product</th><th scope="col">Price</th><th scope="col">Quantity</th><th scope="col">Total</th><th scope="col">Remove</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        ${!totals.allAvailable ? `<p class="notice notice-warn" role="alert">Some items are not available in the chosen fulfilment context. Checkout is blocked until every row is available.</p>` : ''}
+        <p class="notice notice-warn" role="alert" data-shipping-warning${shippingBlocked ? '' : ' hidden'}>${shippingBlocked ? 'Delivery cannot be priced for this address. Choose another address or a store for collection.' : ''}</p>
+      </div>
+      ${summary}
+      <div class="checkout-main">
+        <form class="checkout-form" id="checkout-form" data-checkout-form novalidate tabindex="-1">
           <fieldset class="panel">
             <legend>Your details</legend>
             ${err('contact.name')}
@@ -556,12 +791,197 @@ export function checkout(seed, state, params, ctx = {}) {
           ${storeFields}
           ${errors.cart ? `<p class="notice notice-warn" role="alert">${escapeHtml(errors.cart)}</p>` : ''}
           ${errors.availability ? `<p class="notice notice-warn" role="alert">${escapeHtml(errors.availability)}</p>` : ''}
-          <p><button class="btn btn-primary btn-lg" type="submit" data-action="place-order">Place order</button></p>
+          <button class="visually-hidden" type="submit" tabindex="-1" data-checkout-submit${blocked ? ' disabled aria-disabled="true"' : ''}>Place order</button>
           <p class="muted small">Delivery creates a pending order and opens a clearly labelled payment simulator. Collection is confirmed and unpaid, to pay in store.</p>
-        </div>
-        ${summary}
+        </form>
       </div>
-    </form>`;
+    </div>
+    <div class="checkout-submit-fixed"><button class="btn btn-primary btn-lg" type="submit" form="checkout-form" data-action="place-order" data-checkout-submit${blocked ? ' disabled aria-disabled="true"' : ''}>Place order</button></div>`;
+}
+
+// #checkout is a compatible alias of the unified cart/checkout view: the same
+// single form, the same reorder semantics and the same business checks.
+export function checkout(seed, state, params, ctx = {}) {
+  return cart(seed, state, params, ctx);
+}
+
+// ---------------------------------------------------------------------------
+// Wishlist and account (demo persona surfaces)
+// ---------------------------------------------------------------------------
+
+function wishlistCard(seed, state, model) {
+  const summary = modelPriceSummary(seed, state, model, state.cart.context);
+  return `<div class="product-card wishlist-card">
+    <a class="product-art" href="#product/${escapeHtml(model.id)}">${modelArt(model, summary.chosenSku ? summary.chosenSku.colour : null)}</a>
+    <div class="product-meta">
+      <p class="product-brand">${escapeHtml(model.brand)}</p>
+      <h3><a href="#product/${escapeHtml(model.id)}">${escapeHtml(model.name)}</a></h3>
+      <p class="product-price">From ${priceHtml(summary.chosenSku)}</p>
+      <button class="btn btn-ghost wishlist-remove" type="button" data-action="wishlist-remove" data-model="${escapeHtml(model.id)}">${iconHeart()} Remove</button>
+    </div>
+  </div>`;
+}
+
+// Shared two-step email access flow, used by both the wishlist dialog and the
+// #sign-in page so there is a single demonstration access system. Requesting
+// access (or clicking a provider) never grants anything on its own.
+function authFlow(state, ctx = {}) {
+  const mode = ctx.mode === 'register' ? 'register' : 'login';
+  const stage = ctx.stage || 'email';
+  const provider = ctx.provider || null;
+  if (stage === 'provider') {
+    return `<div class="notice notice-demo" role="status">Mock ${escapeHtml(provider)} sign-in. No external request is made and no access is granted until you press confirm.</div>
+      <p><button class="btn btn-primary" type="button" data-action="auth-provider-confirm" data-provider="${escapeHtml(provider)}" data-auth-autofocus>Confirm demo ${escapeHtml(provider)} sign-in</button></p>
+      <p><button class="link" type="button" data-action="auth-back">Back</button></p>`;
+  }
+  if (stage === 'confirm') {
+    return `<div class="notice notice-info" role="status">
+        <strong>Check your email (demo).</strong>
+        <p>A demo confirmation is ready for ${escapeHtml(ctx.pendingEmail || 'your address')}. Nothing was really sent.</p>
+      </div>
+      <p><button class="btn btn-primary" type="button" data-action="auth-confirm-email" data-auth-autofocus>Confirm demo email</button></p>
+      <p><button class="link" type="button" data-action="auth-back">Use a different address</button></p>
+      <p class="muted small">Entering an email or requesting a link does not grant access on its own; only this explicit confirmation does.</p>`;
+  }
+  return `<div class="auth-tabs" role="tablist" aria-label="Account mode">
+      <button class="auth-tab" type="button" role="tab" data-action="auth-mode" data-mode="login" aria-selected="${mode === 'login'}">Sign in</button>
+      <button class="auth-tab" type="button" role="tab" data-action="auth-mode" data-mode="register" aria-selected="${mode === 'register'}">Create account</button>
+    </div>
+    <form data-auth-form data-mode="${mode}">
+      <div class="field"><label for="auth-email">Email address</label><input id="auth-email" name="email" type="email" autocomplete="email" required data-auth-autofocus></div>
+      ${mode === 'register' ? `<div class="field"><label for="auth-name">Your name</label><input id="auth-name" name="name" autocomplete="name"></div>` : ''}
+      <p><button class="btn btn-primary" type="submit">${mode === 'register' ? 'Create account' : 'Continue with email'}</button></p>
+    </form>
+    <div class="auth-divider">or</div>
+    <div class="provider-row">
+      <button class="provider-btn" type="button" data-action="auth-provider" data-provider="Google"><span class="provider-mark" aria-hidden="true">G</span> Continue with Google</button>
+      <button class="provider-btn" type="button" data-action="auth-provider" data-provider="Apple"><span class="provider-mark" aria-hidden="true">A</span> Continue with Apple</button>
+    </div>
+    <p class="muted small">Google and Apple here are demonstrations only. Clicking them does not sign you in by itself.</p>`;
+}
+
+export function wishlist(seed, state, params, ctx = {}) {
+  if (!isSignedIn(state)) {
+    return `<header class="page-head"><h1>Wishlist</h1></header>
+      <div class="empty-state">
+        <h2>Sign in to use your wishlist</h2>
+        <p class="muted">Saved models live in your account. This prototype uses one demonstration persona and no real account exists.</p>
+        <p><a class="btn btn-primary" href="#sign-in">Sign in or create an account</a> <a class="btn btn-ghost" href="#catalog">Browse the catalogue</a></p>
+      </div>`;
+  }
+  const models = wishlistModels(seed, state);
+  return `
+    <header class="page-head"><h1>Your wishlist</h1>
+      <p class="muted">Saved models for ${escapeHtml(state.customer.name || state.customer.email || 'this demo account')}. Saving a model is not a reservation and does not guarantee availability.</p>
+    </header>
+    ${models.length
+      ? `<div class="grid grid-products wishlist-grid">${models.map((m) => wishlistCard(seed, state, m)).join('')}</div>`
+      : `<div class="empty-state"><p>Your wishlist is empty.</p><p><a class="btn btn-primary" href="#catalog">Browse the catalogue</a></p></div>`}`;
+}
+
+export function account(seed, state, params, ctx = {}) {
+  const signedIn = isSignedIn(state);
+  const saved = wishlistModelIds(state).length;
+  return `
+    <header class="page-head"><h1>Your account</h1></header>
+    <section class="panel account-panel">
+      ${signedIn
+        ? `<div class="account-head">
+            <div><h2>${escapeHtml(state.customer.name || 'Demo customer')}</h2><p class="muted">${escapeHtml(state.customer.email || '')}</p></div>
+            <button class="btn" type="button" data-action="sign-out">Sign out</button>
+          </div>
+          <ul class="account-links">
+            <li><a href="#wishlist">Wishlist (${saved} saved model${saved === 1 ? '' : 's'})</a></li>
+            <li><a href="#orders">My orders</a></li>
+          </ul>
+          <p class="muted small">One demonstration persona. No real authentication, OAuth, email or account data exists.</p>`
+        : `<h2>Sign in or create an account</h2>
+          <p class="muted">Email only &mdash; no password. Google and Apple are clearly labelled demonstrations.</p>
+          <p><a class="btn btn-primary" href="#sign-in">Sign in</a>
+             <a class="btn" href="#sign-in?mode=register">Create account</a></p>
+          <p class="muted small">A signed-out visitor cannot view a saved wishlist.</p>`}
+    </section>`;
+}
+
+export function authDialog(seed, state, params, ctx = {}) {
+  const mode = ctx.mode === 'register' ? 'register' : 'login';
+  return `<dialog class="auth-dialog" id="auth-dialog" aria-labelledby="auth-title">
+    <div class="auth-body">
+      <button class="btn btn-ghost auth-close" type="button" data-action="auth-close" aria-label="Close">${iconClose()}</button>
+      <h2 id="auth-title">${mode === 'register' ? 'Create your account' : 'Sign in'}</h2>
+      <p class="muted small">Demo account for the wishlist. No password, no real email is sent, and Google/Apple are simulated.</p>
+      ${authFlow(state, ctx)}
+    </div>
+  </dialog>`;
+}
+
+// Wishlist success popup. Shown only AFTER a real save (including a save that
+// completes after a guest signs in). Russian copy is intentional and exact.
+export function wishlistDialog(seed, state, params, ctx = {}) {
+  const model = getModel(seed, ctx.modelId);
+  return `<dialog class="wishlist-dialog" id="wishlist-dialog" aria-labelledby="wishlist-dialog-title">
+    <div class="auth-body">
+      <button class="btn btn-ghost auth-close" type="button" data-action="wishlist-dialog-close" aria-label="Закрыть">${iconClose()}</button>
+      <h2 id="wishlist-dialog-title">Товар добавлен в избранное</h2>
+      ${model ? `<p class="muted small">${escapeHtml(model.brand)} &mdash; ${escapeHtml(model.name)}</p>` : ''}
+      <div class="wishlist-dialog-actions">
+        <button class="btn btn-primary" type="button" data-action="wishlist-go">перейти в избранное</button>
+        <button class="btn" type="button" data-action="wishlist-continue">продолжить покупки</button>
+      </div>
+    </div>
+  </dialog>`;
+}
+
+// Accessible large-image viewer for a product gallery.
+export function galleryDialog(seed, state, params, ctx = {}) {
+  const model = getModel(seed, ctx.modelId);
+  if (!model) return '';
+  const skus = skusForModel(seed, model.id).filter((s) => s.published);
+  const selected = skus.find((s) => s.id === ctx.selectedSkuId) || skus[0];
+  const views = galleryViews(model, selected ? selected.colour : null);
+  const idx = Math.min(Math.max(0, Number(ctx.index) || 0), views.length - 1);
+  const multi = views.length > 1;
+  return `<dialog class="gallery-dialog" id="gallery-dialog" aria-label="${escapeHtml(model.name)} images">
+    <div class="gallery-dialog-body">
+      <button class="btn btn-ghost gallery-close" type="button" data-action="gallery-close" aria-label="Close">${iconClose()}</button>
+      <div class="gallery-stage">${views[idx].svg}</div>
+      ${multi ? `<div class="gallery-dialog-controls">
+        <button class="btn" type="button" data-action="gallery-prev" aria-label="Previous image">${iconChevron('left')}</button>
+        <span class="gallery-counter">${idx + 1} / ${views.length}</span>
+        <button class="btn" type="button" data-action="gallery-next" aria-label="Next image">${iconChevron('right')}</button>
+      </div>` : ''}
+    </div>
+  </dialog>`;
+}
+
+// Review submission dialog. A guest gets a sign-in path; a signed-in customer
+// gets the form. An invalid submission keeps the dialog open with a message and
+// preserves the typed draft.
+export function reviewDialog(seed, state, params, ctx = {}) {
+  const model = getModel(seed, ctx.modelId);
+  if (!model) return '';
+  const signedIn = isSignedIn(state);
+  const body = signedIn
+    ? `<form data-review-form data-model="${escapeHtml(model.id)}">
+        ${ctx.error ? `<p class="notice notice-warn" role="alert">${escapeHtml(ctx.error)}</p>` : ''}
+        <div class="field"><label for="rev-rating">Rating (1&ndash;5)</label>
+          <select id="rev-rating" name="rating">
+            ${[5, 4, 3, 2, 1].map((n) => `<option value="${n}"${String(ctx.rating == null ? '' : ctx.rating) === String(n) ? ' selected' : ''}>${n} star${n === 1 ? '' : 's'}</option>`).join('')}
+          </select></div>
+        <div class="field"><label for="rev-title">Review title</label><input id="rev-title" name="title" value="${escapeHtml(ctx.title || '')}"></div>
+        <div class="field"><label for="rev-desc">Review description (optional)</label><textarea id="rev-desc" name="description" rows="3">${escapeHtml(ctx.description || '')}</textarea></div>
+        <p><button class="btn btn-primary" type="submit">Submit review</button></p>
+      </form>`
+    : `<div class="notice notice-info" role="status">Sign in to write a review. Any signed-in demo customer may review; buying the model is not required.</div>
+      <p><button class="btn btn-primary" type="button" data-action="open-auth" data-mode="login" data-review-auth="1">Sign in to review</button></p>`;
+  return `<dialog class="review-dialog" id="review-dialog" aria-labelledby="review-heading">
+    <div class="auth-body">
+      <button class="btn btn-ghost auth-close" type="button" data-action="review-close" aria-label="Close">${iconClose()}</button>
+      <h2 id="review-heading">Leave a review</h2>
+      <p class="muted small">About ${escapeHtml(model.name)}. Demo only &mdash; no real review system.</p>
+      ${body}
+    </div>
+  </dialog>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -671,15 +1091,10 @@ function notFoundOrder() {
 
 export function signIn(seed, state, params, ctx = {}) {
   return `
-    <header class="page-head"><h1>Sign in to your orders</h1></header>
-    <section class="panel">
-      <p class="notice notice-demo" role="note">Mock email only. Nothing is sent; a sample appears in <a href="#emails">Email samples</a>.</p>
-      <form data-login-form class="stack">
-        <div class="field"><label for="li-email">Email address</label><input id="li-email" name="email" type="email" autocomplete="email" required></div>
-        <p><button class="btn btn-primary" type="submit">Send me a sign-in link</button></p>
-      </form>
-      <p class="muted small">For privacy, the response is always neutral: it never says whether an account exists.</p>
-      ${ctx.flash ? `<p class="notice notice-info" role="status">${escapeHtml(ctx.flash)}</p>` : ''}
+    <header class="page-head"><h1>Sign in or create an account</h1>
+      <p class="muted">Email only &mdash; no password. This is the same demonstration flow used by the wishlist dialog; no separate access system exists.</p></header>
+    <section class="panel account-panel">
+      ${authFlow(state, ctx)}
     </section>`;
 }
 

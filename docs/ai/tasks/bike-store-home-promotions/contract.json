@@ -1,0 +1,98 @@
+{
+  "id": "bike-store-home-promotions",
+  "status": "ready",
+  "objective": "Implement authorized home hero70/30 and latest3 journal cards before footer.",
+  "context": "Read refine-home-promotions planning. Existing prototype105 checks, accepted previous iteration. No active other writer. Whole slide clickable with one CTA, right two equal brand promos; brand final design undecided. Latest3 published articles need images/date/title/body start max4lines. Sol owns browser acceptance.",
+  "artifacts": [
+    "openspec/changes/refine-home-promotions/proposal.md",
+    "openspec/changes/refine-home-promotions/design.md",
+    "openspec/changes/refine-home-promotions/specs/ux-prototype/spec.md",
+    "docs/THESAURUS.md"
+  ],
+  "scope": [
+    "prototype/**",
+    "docs/prototype.md",
+    "docs/ai/tasks/bike-store-home-promotions/deviations.md"
+  ],
+  "non_goals": [
+    "No other screens redesign or global agent settings",
+    "No commit/push/deploy/OAuth/real resources",
+    "No parent docs/spec edits or subdelegation"
+  ],
+  "compatibility": [
+    "Preserve all105 existing checks purpose and all cart/auth/stock/reorder flows",
+    "Preserve manual3slide controls accessible labels",
+    "Preserve legacy content edits and unpublished status"
+  ],
+  "plan": [
+    "Read protocol/planning/current home and content fixtures",
+    "Implement hero7fr/3fr scene overlay wholelink with single CTA and separate controls, two equal Northgate/Larkhill brand targets",
+    "Add local article imagery/date and two published synthetic fixtures; safe legacy addition/missing metadata without override",
+    "Render latest3 onlypublished with descending date/stable tie; startbody clamp4, actual journal links, finalsection beforefooter",
+    "Add meaningful selection/migration checks and update guide/journal",
+    "Run required checks; parent does real browser validation"
+  ],
+  "pitfalls": [
+    "No nested anchors/button inside slideanchor: styledspan CTA",
+    "All products header/category link retained; only hero extra removed",
+    "Legacy state overrides seed articles: add missingnewfixtures and fillmissingmetadata only",
+    "Unpublishedwintercommute stays unpublished; use beginningbody, never excerpt",
+    "Full-area anchor must not cover controls; phone390/360 nooverflow"
+  ],
+  "acceptance": [
+    "PRO08 observable hero70/30 equalpromos wholelink oneCTA noAllproducts and manualcontrols",
+    "PRO13 latest3cards actualdates/art/bodypreview<=4lines beforefooter, clicking opens article",
+    "Safe legacy preserves existingbody/title/published plus orders/cart/wishlist",
+    "All105checks retained and all checks pass; accurate docs/journal"
+  ],
+  "checks": [
+    {
+      "argv": [
+        "node",
+        "prototype/check.mjs"
+      ],
+      "expected_exit": 0,
+      "timeout_seconds": 120
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "prototype/app.mjs"
+      ],
+      "expected_exit": 0,
+      "timeout_seconds": 30
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "prototype/domain.mjs"
+      ],
+      "expected_exit": 0,
+      "timeout_seconds": 30
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "prototype/storefront.mjs"
+      ],
+      "expected_exit": 0,
+      "timeout_seconds": 30
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        ".",
+        ":(exclude)needed-design-changes.md"
+      ],
+      "expected_exit": 0,
+      "timeout_seconds": 30
+    }
+  ],
+  "blocker_policy": "Record evidence and proposed adjustment, report to orchestrator, continue independent in-scope work. Do not weaken requirements or hide failures."
+}

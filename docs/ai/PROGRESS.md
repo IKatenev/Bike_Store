@@ -1,4 +1,63 @@
-# Состояние разработки
+# Прогресс проекта
+
+## Текущий результат: итерация товара и каталога принята, 10 октября 2026
+Авторизован refine-product-and-catalog: max1420/home4/blog2:1, gallery/layout,
+wishlist success popup/catalog heart (подтверждён владельцем), tabs/reviews5pagination,
+checkbox multiselect/Show more. Production не затронут.
+Worker bike-store-product-catalog / run_deepseek-flash-bike-store-product-catalog
+запущен 14:32:42 UTC (18:32:42 Asia/Yerevan), профиль закреплён.
+OpenSpec strict passed. Предыдущие грязные изменения сохранены; before-status в задаче.
+Первая проверка 14:33:11 UTC: worker прочитал protocol/spec/design и storefront/app/domain/check. Начальная навигация соответствует задаче, implementation ещё не проверена. Cursors50→390→431. Две ранние коррекции: показать home4 на existing featured; никаких новых SKU/изменения prices ради sale. Приёмка Sol завершена:127/0,5 toolkit checks passed, independent browser1440/1600/390/360. Gallery/one-image, wishlist guest/signed-in/modal, review validation/pagination/optional description/reload/model rating, filters multiselect/history, exactprice GBP→pence проверены. Add to cart добавляет1, qty остаётся в cart. Main maxWidth/width1420 измерены. Журнал8 коррекций прочитан; parent price step0.01. Task accepted; change архивирован2026-10-10-refine-product-and-catalog. Итог/доказательства: tasks/bike-store-product-catalog/acceptance.md. Production75tasks остаются открытыми. Следующее действие: просмотр владельцем, не активный worker.
+
+## Текущий результат: переработка прототипа принята Sol, 10 октября 2026
+
+По needed-design-changes.md и подтверждённым уточнениям владельца выполнены
+PRO-07–PRO-12: нейтральный магазинный дизайн, header/search/menu/footer,
+ручной hero, каталог sidebar/drawer и grid 3/2, dropdown SKU, Go to cart,
+name recommendations, отдельный Wishlist, общий passwordless email login/register
+с явным demo confirm и Google/Apple demo, checkout внутри корзины.
+
+Последовательные DeepSeek v4.1 Flash/OpenCode run через portable toolkit:
+- bike-store-redesign / run_deepseek-flash-bike-store-redesign:
+  10:21:18–10:41:50 UTC, completed exit 0, затем accepted Sol.
+- bike-store-checkout-context / run_deepseek-flash-bike-store-checkout-context:
+  10:43:01–10:47:16 UTC, completed exit 0, затем accepted Sol.
+  Отдельная коррекция устранила stale stock/shipping gate и первый тап mega menu.
+- Финальные Porch cursors: исходная задача terminal; correction 1034 terminal.
+  Accepted фиксируется в task run.json и acceptance.md; больше ждать writer не нужно.
+
+Независимые проверки: task check обеих задач — пять команд каждой passed;
+105 suite checks / 0 failed (84 прежних сохранены), дополнительные parent assertions
+wishlist/legacy/ranking/fallback/SKU/filter passed, syntax остальных modules/server passed.
+Whitespace gate исключает только pre-existing user needed-design-changes.md;
+его содержимое/пробелы не менялись. Parent случайно добавленные EOF newlines
+в docs удалены до повторной успешной проверки. Полный diffcheck без исключения
+по-прежнему не заявляется passed.
+
+Browser review через cua: 1440/1024 desktop grid3 с первым рядом в viewport;
+768 sidebar+grid2; 390/360 grid2+Filter, без horizontal overflow. Слайдер/поиск/
+подкатегории, dropdown реального SKU, wishlist guest request→confirm→save/reload/remove,
+modal cancel/focus, inline auth без duplicate IDs, Google/Apple explicit confirm/logout
+проверены. Delivery £19.95→demo отказ: pending/failed/unfulfilled; collection Forest/M
+York→confirmed/unpaid/preparing. Недоступный Sand/S блокируется в магазинах;
+смена контекста и excluded→supported region восстанавливает честный gate и draft.
+Mobile fixed action не перекрывает поля/DEMO badge. Keyboard categories/Escape работают;
+console errors пуст. Sol ограничил старые hover timers текущей панелью.
+
+Отчёты: docs/ai/tasks/bike-store-redesign/acceptance.md и
+bike-store-checkout-context/acceptance.md; снимок preview-desktop.jpg в исходной задаче.
+Change 7/7 tasks completed, архивирован как
+openspec/changes/archive/2026-10-10-redesign-bike-store-prototype;
+main ux-prototype содержит PRO-01–12. Предыдущий архив не менялся.
+
+Production MVP: 45 requirements/162 scenarios, 75 tasks открыты (0/75);
+новые ACC-04/ACC-05/CAT-07/CHK-05 и группа15 — план, не production implementation.
+Реальных OAuth/email/payment/security интеграций нет, commit/push/deploy не выполнялись.
+Внешний вид — следующая итерация для просмотра и возможных дальнейших правок владельца.
+Руководство docs/prototype.md актуально. Preview открыт на http://127.0.0.1:4173/#home;
+loopback server exec session82191 оставлен работающим. Browser viewport override снят,
+preview tab marked deliverable. Следующее действие — дополнительные пожелания владельца;
+самостоятельная production разработка не авторизована.
 
 ## Текущий результат: интерактивный прототип принят, 9 октября 2026 года
 

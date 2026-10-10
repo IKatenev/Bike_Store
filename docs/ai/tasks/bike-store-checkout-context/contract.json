@@ -1,0 +1,98 @@
+{
+  "id": "bike-store-checkout-context",
+  "status": "ready",
+  "objective": "Fix checkout fulfilment/store/address changes so availability and all submit buttons update immediately, preserving typed draft.",
+  "context": "Sol browser defect: cart gravel-01 Sand S; switch Collection, submit without store -> blocked; select York in co-store -> context still collection/null, zero availability, disabled submit. afterCheckout refreshes only amounts. Also inspect recovery from invalid delivery region. Previous writer completed; sole writer now this task. Human authorized redesign.",
+  "artifacts": [
+    "openspec/changes/redesign-bike-store-prototype/design.md",
+    "openspec/changes/redesign-bike-store-prototype/specs/ux-prototype/spec.md"
+  ],
+  "scope": [
+    "prototype/app.mjs",
+    "prototype/domain.mjs only if cohesive transition helper useful",
+    "prototype/storefront.mjs only if needed",
+    "prototype/check.mjs",
+    "docs/ai/tasks/bike-store-checkout-context/deviations.md"
+  ],
+  "non_goals": [
+    "Architecture changes outside this contract",
+    "Provider or global agent configuration changes",
+    "Commits, pushes, deployments and recursive delegation"
+  ],
+  "compatibility": [
+    "Preserve all101 checks and completeCheckout semantics",
+    "Typed contact/address draft and normal typing focus preserved",
+    "Unavailable rows remain, whole-cart stock gate preserved",
+    "Mobile fixed and desktop summary submit use same form"
+  ],
+  "plan": [
+    "Read required protocol and current checkout code",
+    "Synchronize cart context immediately on fulfilment/store change; capture draft before rerender, save state, recalculate rows/totals/buttons",
+    "Header context change on cart must capture draft before rerender",
+    "Ensure invalid-to-valid region/address recovers stale shipping warning/disabled buttons without rerender while typing",
+    "Add meaningful behavioural regression checks around transition helper if extracted, no source text assertions",
+    "Run checks and record actual result in journal"
+  ],
+  "pitfalls": [
+    "Bubbling change listener on detached form after rerender",
+    "Switch collection/null back to delivery must recover availability",
+    "Do not merely enable buttons to bypass stock gate",
+    "Supported region after invalid region must recover button and warning"
+  ],
+  "acceptance": [
+    "No-store blocked cart then York -> context updated/available and valid collection submission confirmed/unpaid",
+    "Fulfilment/store changes retain contact/address draft and reflect availability",
+    "Unsupported -> supported delivery region recovers correct gate",
+    "Original101 checks retained and all checks pass"
+  ],
+  "checks": [
+    {
+      "argv": [
+        "node",
+        "prototype/check.mjs"
+      ],
+      "expected_exit": 0,
+      "timeout_seconds": 120
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "prototype/app.mjs"
+      ],
+      "expected_exit": 0,
+      "timeout_seconds": 30
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "prototype/domain.mjs"
+      ],
+      "expected_exit": 0,
+      "timeout_seconds": 30
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "prototype/storefront.mjs"
+      ],
+      "expected_exit": 0,
+      "timeout_seconds": 30
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        ".",
+        ":(exclude)needed-design-changes.md"
+      ],
+      "expected_exit": 0,
+      "timeout_seconds": 30
+    }
+  ],
+  "blocker_policy": "Record evidence and proposed adjustment, report to orchestrator, continue independent in-scope work. Do not weaken requirements or hide failures."
+}

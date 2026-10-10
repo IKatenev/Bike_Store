@@ -1,5 +1,33 @@
 # Контекст целевого проекта
 
+## Актуальное дополнение 10 октября: уточнение товара и каталога принято
+Изменение refine-product-and-catalog реализовано DeepSeek v4.1 Flash через toolkit
+и независимо принято Sol: ширина1420, homegrid4/blog3 с2:1 cover, gallery,
+компоновка покупки без quantity, rating всей модели, wishlistheart и confirmation,
+4tabs/размеры/отзывы сauth/pagination5/localStorage, checkboxmultiselect/Show more.
+Каталог остаётся3desktop/2phone. Featured4, sale4columns с фактическими2discounted.
+127checks/0failed, browser1440/1600/390/360. OpenSpec PRO14–18 добавлены,
+PRO07/13 обновлены; change архивирован2026-10-10-refine-product-and-catalog.
+Task bike-store-product-catalog / run_deepseek-flash-bike-store-product-catalog accepted.
+Фото/отзывы/вход локальные demo; production scope/75 открытых tasks не расширены.
+Отчёт: [acceptance](tasks/bike-store-product-catalog/acceptance.md).
+
+
+## Актуальное дополнение 10 октября: разрешена переработка
+
+Владелец подтвердил план и разрешил переработать prototype/ по
+needed-design-changes.md: нейтральная белая/тёмная палитра с синим акцентом,
+sans-serif, магазинная шапка/меню/слайдер, каталог 3/2, dropdown вариантов,
+общая корзина с оформлением, Wishlist и Google/Apple demo. Пароль покупателя
+отменён: вход/создание по email. «Перенос в корзину» означает переход к ней.
+Рекомендации по близости названий, без характеристик совместимости MVP.
+Изменение redesign-bike-store-prototype и задача bike-store-redesign;
+исполнитель DeepSeek v4.1 Flash через toolkit; обе задачи приняты Sol. Change 7/7 архивирован 2026-10-10, основная ux-prototype содержит PRO-01–12. Проверки: 105/0 и независимый browser review; внешний вид остаётся итерацией для правок владельца. Сейчас 45 requirements/162 scenarios и 75 открытых production tasks.
+Production MVP получил плановые ACC-04/ACC-05/CAT-07/CHK-05 и группу 15 задач;
+реальных OAuth/account/wishlist интеграций нет. Числа 41 requirements и 69 tasks
+в историческом тексте ниже описывают состояние до этого дополнения.
+
+
 ## Актуальное дополнение 9 октября: прототип создан и принят
 
 Владелец поручил приступить к прототипу по принятым требованиям. Отдельный

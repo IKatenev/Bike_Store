@@ -12,16 +12,28 @@ import {
   dispatchOrder, deliverOrder, requestRefund, resolveRefund, restockReturn,
   staffAdjustStock, computeShipping, cartAvailability, cartTotals, filterModels,
   searchModels, escapeHtml, curationModels, setCuration, visibleArticles,
+  latestArticles, publishedArticlesByDate, formatArticleDate, setArticle,
   reservationActive, reservationDeadline, guestOrders, verifiedHistory, canViewOrder,
   clearGuestSession, selectCurrentGuestOrder, guardStaffRoute, refundSaysMoneyReturned,
   physicalBalance, reservedQuantity, endOfThirdDayAfter, endOfDayLondon,
   londonDateString, londonWeekday, londonDateTimeString, getSku, formatGBP,
   acceptCancellation, serializeState, deserializeState, seedDemoScenarios,
-  reorderChanges, scenarioOrderId, modelPriceSummary
+  reorderChanges, scenarioOrderId, modelPriceSummary, skusForModel,
+  addToWishlist, removeFromWishlist, isWishlisted, wishlistModels, wishlistModelIds,
+  signInCustomer, signOutCustomer, isSignedIn, chooseSku, skuOptionValue,
+  recommendModels, migrateState, requestEmailAccess, confirmEmailAccess, confirmProviderAccess,
+  resolveCartContext, checkoutGate, createProductReview, reviewsForModel,
+  reviewSummary, reviewPage
 } from './domain.mjs';
 import { resolvePath } from './serve.mjs';
 import { staffOrder, staffProduct, staffReturns } from './staff.mjs';
-import { payment as paymentView, result as resultView, order as orderView, catalog as catalogView, cart as cartView } from './storefront.mjs';
+import {
+  payment as paymentView, result as resultView, order as orderView, catalog as catalogView,
+  cart as cartView, checkout as checkoutView, home as homeView, product as productView,
+  wishlist as wishlistView, account as accountView, authDialog as authDialogView,
+  wishlistDialog as wishlistDialogView, galleryDialog as galleryDialogView,
+  reviewDialog as reviewDialogView, galleryViews
+} from './storefront.mjs';
 
 let passed = 0;
 const failures = [];
@@ -611,6 +623,60 @@ test('context change retains unavailable rows and flags them', () => {
   eq(avail.lines[0].ok, false, 'unavailable at Bath');
 });
 
+test('resolveCartContext packs delivery/collection transitions consistently', () => {
+  eq(JSON.stringify(resolveCartContext({ fulfilment: 'delivery', storeId: 'store-york' })), JSON.stringify({ type: 'delivery', storeId: null }), 'delivery clears any store');
+  eq(JSON.stringify(resolveCartContext({ fulfilment: 'collection', storeId: 'store-york' })), JSON.stringify({ type: 'collection', storeId: 'store-york' }), 'collection keeps the store');
+  eq(JSON.stringify(resolveCartContext({ fulfilment: 'collection' })), JSON.stringify({ type: 'collection', storeId: null }), 'collection without a store stays null');
+  eq(JSON.stringify(resolveCartContext()), JSON.stringify({ type: 'delivery', storeId: null }), 'default delivery');
+});
+
+test('checkoutGate distinguishes pending, blocked and recovered delivery addresses', () => {
+  const ctx = fresh();
+  ctx.state.cart.context = resolveCartContext({ fulfilment: 'delivery' });
+  addToCart(ctx.state.cart, 'gravel-01-M-forest', 1);
+  const pending = checkoutGate(ctx.seed, ctx.state, ctx.state.cart, { address: { line1: '', city: '', postcode: '', regionId: 'england' } });
+  eq(pending.shippingPending, true, 'pending before an address');
+  eq(pending.shippingBlocked, false, 'no false shipping block');
+  eq(pending.blocked, false, 'available item is not blocked');
+  const excluded = checkoutGate(ctx.seed, ctx.state, ctx.state.cart, { address: { line1: '1 Demo St', city: 'Belfast', postcode: 'BT1 1AA', regionId: 'northern-ireland' } });
+  eq(excluded.shippingBlocked, true, 'excluded region blocks');
+  eq(excluded.blocked, true, 'gate blocked');
+  const recovered = checkoutGate(ctx.seed, ctx.state, ctx.state.cart, { address: { line1: '1 Demo St', city: 'York', postcode: 'YO1 1AA', regionId: 'england' } });
+  eq(recovered.shippingBlocked, false, 'supported region recovers');
+  eq(recovered.blocked, false, 'gate recovered');
+});
+
+test('collection store transition recovers availability and stays confirmed/unpaid', () => {
+  const ctx = fresh();
+  ctx.state.cart.context = resolveCartContext({ fulfilment: 'collection' });
+  addToCart(ctx.state.cart, 'gravel-01-M-terracotta', 1); // warehouse 0, York 1
+  const noStore = checkoutGate(ctx.seed, ctx.state, ctx.state.cart, {});
+  eq(noStore.isCollection, true, 'collection context');
+  eq(noStore.blocked, true, 'no store selected still blocks availability');
+  ctx.state.cart.context = resolveCartContext({ fulfilment: 'collection', storeId: 'store-york' });
+  const york = checkoutGate(ctx.seed, ctx.state, ctx.state.cart, {});
+  eq(york.blocked, false, 'York recovers availability');
+  const html = cartView(ctx.seed, ctx.state, {});
+  assert(!html.includes('aria-disabled="true"'), 'submit re-enabled after choosing a store');
+  assert(!html.includes('Some items are not available'), 'availability warning cleared');
+  const res = completeCheckout(ctx.seed, ctx.state, { contact: CONTACT });
+  assert(res.ok, 'collection submission accepted');
+  eq(res.next, 'result', 'no payment simulator for collection');
+  eq(res.order.paymentState, 'unpaid', 'confirmed and unpaid');
+});
+
+test('cart render: an unsupported delivery region blocks, a supported one recovers the gate', () => {
+  const ctx = fresh();
+  ctx.state.cart.context = resolveCartContext({ fulfilment: 'delivery' });
+  addToCart(ctx.state.cart, 'gravel-01-M-forest', 1);
+  const blockedHtml = cartView(ctx.seed, ctx.state, {}, { form: { contact: { name: '', email: '', phone: '' }, address: { line1: '1 Demo St', city: 'Belfast', postcode: 'BT1 1AA', regionId: 'northern-ireland' } } });
+  assert(blockedHtml.includes('aria-disabled="true"'), 'excluded region blocks the button');
+  assert(blockedHtml.includes('Delivery cannot be priced'), 'shipping warning shown');
+  const okHtml = cartView(ctx.seed, ctx.state, {}, { form: { contact: { name: '', email: '', phone: '' }, address: { line1: '1 Demo St', city: 'York', postcode: 'YO1 1AA', regionId: 'england' } } });
+  assert(!okHtml.includes('aria-disabled="true"'), 'supported region re-enables the button');
+  assert(!okHtml.includes('Delivery cannot be priced'), 'warning cleared');
+});
+
 test('order snapshot is immutable to later context and price changes', () => {
   const ctx = fresh();
   const order = deliveryOrder(ctx, 'gravel-01-M-forest', 1).order;
@@ -826,9 +892,10 @@ test('catalogue keeps price/height/frame filters when refining (Apply does not d
   const ctx = fresh();
   const html = catalogView(ctx.seed, ctx.state, { query: { priceMax: '150000', heightCm: '175' } });
   assert(html.includes('name="priceMax"'), 'price control present');
+  assert(/id="c-price"[^>]*type="number"/.test(html), 'price control is numeric');
   assert(html.includes('name="heightCm"'), 'height control present');
   assert(html.includes('name="frameSize"'), 'frame control present');
-  assert(html.includes('value="150000"'), 'price value retained');
+  assert(html.includes('value="1500"'), 'price value retained in pounds (£1,500 = 150000 pence)');
   assert(html.includes('value="175"'), 'height value retained');
   assert(html.includes('Fieldnote Gravel'), 'matching model shown');
   assert(!html.includes('Meridian Road'), 'over-price model excluded');
@@ -1015,6 +1082,495 @@ test('staff order diagnostics copy has no unbreakable separator token', () => {
   const html = staffOrder(ctx.seed, ctx.state, { orderId: order.id });
   assert(!html.includes('placeholder/deadline'), 'no long unbreakable token');
   assert(html.includes('code placeholder, deadline, extension, dispatch, delivery and refund'), 'readable spaced copy');
+});
+
+// ---------------------------------------------------------------------------
+section('Redesign: variants, recommendations, wishlist, access gate, unified cart');
+// ---------------------------------------------------------------------------
+
+test('the synthetic Fieldnote Gravel Frame fixture is published with warehouse stock', () => {
+  const ctx = fresh();
+  const frame = ctx.seed.models.find((m) => m.id === 'frame-01');
+  assert(frame && frame.published && frame.categoryId === 'parts', 'published part');
+  const skus = ctx.seed.skus.filter((s) => s.modelId === 'frame-01' && s.published);
+  assert(skus.length >= 1, 'has published SKUs');
+  assert(skus.every((s) => physicalBalance(ctx.state, s.id, 'warehouse') > 0), 'has warehouse stock');
+});
+
+test('recommendations rank by shared name tokens and exclude current/unpublished', () => {
+  const ctx = fresh();
+  const recs = recommendModels(ctx.seed, ctx.state, 'gravel-01');
+  const ids = recs.map((m) => m.id);
+  assert(ids.includes('frame-01'), 'shared-name frame recommended');
+  assert(!ids.includes('gravel-01'), 'current excluded');
+  assert(!ids.includes('jacket-01'), 'unpublished excluded');
+  assert(recs.length <= 6, 'capped at six');
+});
+
+test('recommendations fall back to published bikes/parts when no name token matches', () => {
+  const ctx = fresh();
+  const recs = recommendModels(ctx.seed, ctx.state, 'lock-01');
+  assert(recs.length > 0, 'fallback present');
+  assert(recs.every((m) => m.published && (m.categoryId === 'bikes' || m.categoryId === 'parts')), 'bikes/parts only');
+  assert(!recs.some((m) => m.id === 'lock-01'), 'current excluded');
+});
+
+test('chooseSku keeps the changed dimension and explains the adjusted one', () => {
+  const ctx = fresh();
+  const sizeChange = chooseSku(ctx.seed, 'frame-01', { colour: 'Ink', size: '56', changed: 'size' });
+  eq(sizeChange.sku.id, 'frame-01-56-forest', 'new size kept');
+  eq(sizeChange.adjusted, true);
+  eq(sizeChange.changed, 'size');
+  const colourChange = chooseSku(ctx.seed, 'frame-01', { colour: 'Forest', size: '54', changed: 'colour' });
+  eq(colourChange.sku.id, 'frame-01-56-forest', 'new colour kept');
+  eq(colourChange.changed, 'colour');
+  const exact = chooseSku(ctx.seed, 'frame-01', { colour: 'Ink', size: '54', changed: 'size' });
+  eq(exact.sku.id, 'frame-01-54-ink');
+  eq(exact.adjusted, false);
+});
+
+test('wishlist requires sign-in, stores unique model ids and removes', () => {
+  const ctx = fresh();
+  eq(addToWishlist(ctx.state, 'gravel-01').ok, false, 'guest cannot save');
+  eq(isSignedIn(ctx.state), false);
+  signInCustomer(ctx.state, { email: 'buyer@example.com', name: 'Demo Buyer' });
+  eq(addToWishlist(ctx.state, 'gravel-01').ok, true);
+  eq(addToWishlist(ctx.state, 'gravel-01').already, true, 'no duplicate');
+  eq(wishlistModelIds(ctx.state).length, 1);
+  assert(isWishlisted(ctx.state, 'gravel-01'));
+  removeFromWishlist(ctx.state, 'gravel-01');
+  eq(wishlistModelIds(ctx.state).length, 0);
+});
+
+test('email request alone never grants access; only an explicit confirm does', () => {
+  const ctx = fresh();
+  const req = requestEmailAccess(ctx.state, { email: 'buyer@example.com', name: 'Buyer' });
+  assert(req.ok, 'request stored');
+  eq(isSignedIn(ctx.state), false, 'request does not sign in');
+  eq(ctx.state.verified, false, 'request does not verify history');
+  eq(canViewOrder(ctx.state, 'ord-0001'), false, 'no history access from a request');
+  const conf = confirmEmailAccess(ctx.state);
+  assert(conf.ok, 'confirm grants');
+  eq(isSignedIn(ctx.state), true);
+  eq(ctx.state.verified, true, 'single persona confirms history too');
+});
+
+test('confirm without a prior request is refused', () => {
+  const ctx = fresh();
+  eq(confirmEmailAccess(ctx.state).ok, false);
+  eq(confirmEmailAccess(ctx.state).reason, 'no_request');
+});
+
+test('provider confirmation signs in and confirms the demo persona', () => {
+  const ctx = fresh();
+  confirmProviderAccess(ctx.state, 'Google');
+  eq(isSignedIn(ctx.state), true);
+  eq(ctx.state.verified, true);
+  assert(ctx.state.customer.email.includes('google'), 'demo provider email');
+});
+
+test('sign-out clears the account and the order-history proof together', () => {
+  const ctx = fresh();
+  deliveryOrder(ctx, 'gravel-01-M-forest', 1);
+  requestEmailAccess(ctx.state, { email: 'buyer@example.com' });
+  confirmEmailAccess(ctx.state);
+  eq(verifiedHistory(ctx.state).length, 1);
+  signOutCustomer(ctx.state);
+  eq(isSignedIn(ctx.state), false);
+  eq(ctx.state.verified, false, 'history flag cleared');
+  eq(verifiedHistory(ctx.state).length, 0);
+});
+
+test('wishlist and account views reflect the signed-in gate', () => {
+  const ctx = fresh();
+  const guest = wishlistView(ctx.seed, ctx.state, {});
+  assert(guest.includes('Sign in to use your wishlist'), 'guest gate shown');
+  assert(!guest.includes('Fieldnote Gravel'), 'no saved models for a guest');
+  signInCustomer(ctx.state, { email: 'buyer@example.com', name: 'Demo Buyer' });
+  addToWishlist(ctx.state, 'gravel-01');
+  const mine = wishlistView(ctx.seed, ctx.state, {});
+  assert(mine.includes('Fieldnote Gravel') && mine.includes('data-action="wishlist-remove"'), 'saved model with remove');
+  const acc = accountView(ctx.seed, ctx.state, {});
+  assert(acc.includes('href="#wishlist"'), 'account links the wishlist');
+});
+
+test('the shared auth flow has no password field and switches modes', () => {
+  const ctx = fresh();
+  const login = authDialogView(ctx.seed, ctx.state, {}, { mode: 'login', stage: 'email' });
+  assert(!login.includes('type="password"'), 'no password field');
+  assert(login.includes('Continue with Google') && login.includes('Continue with Apple'), 'demo providers');
+  const reg = authDialogView(ctx.seed, ctx.state, {}, { mode: 'register', stage: 'email' });
+  assert(reg.includes('Your name'), 'name allowed on create');
+  assert(!reg.includes('type="password"'), 'no password on create');
+  const confirm = authDialogView(ctx.seed, ctx.state, {}, { mode: 'login', stage: 'confirm', pendingEmail: 'a@b.com' });
+  assert(confirm.includes('data-action="auth-confirm-email"'), 'explicit confirm button');
+  assert(confirm.includes('a@b.com'), 'neutral pending address shown');
+});
+
+test('product view offers colour/size dropdowns, go-to-cart, wishlist and related parts', () => {
+  const ctx = fresh();
+  const html = productView(ctx.seed, ctx.state, { id: 'gravel-01' }, {});
+  assert(html.includes('id="p-colour"') && html.includes('id="p-size"'), 'dropdowns');
+  assert(html.includes('Go to cart'), 'go to cart beside add');
+  assert(html.includes('data-action="wishlist-toggle"'), 'wishlist button');
+  assert(html.includes('Related products') && html.includes('Fieldnote Gravel Frame'), 'name-based related part');
+  assert(html.includes('not a statement that they fit or are compatible'), 'no compatibility promise');
+});
+
+test('home view renders a manual three-slide carousel with controls', () => {
+  const ctx = fresh();
+  const html = homeView(ctx.seed, ctx.state, {}, {});
+  eq((html.match(/data-hero-slide="/g) || []).length, 3, 'three slides');
+  assert(html.includes('data-action="hero-prev"') && html.includes('data-action="hero-next"'), 'manual controls');
+  eq((html.match(/data-action="hero-slide"/g) || []).length, 3, 'three indicators');
+  assert(!/autoplay/i.test(html), 'no autoplay');
+});
+
+test('home hero uses one whole-slide link per slide and no All products CTA', () => {
+  const ctx = fresh();
+  const html = homeView(ctx.seed, ctx.state, {}, {});
+  const links = [...html.matchAll(/<a class="hero-slide-link"[\s\S]*?<\/a>/g)].map((m) => m[0]);
+  eq(links.length, 3, 'one whole-slide link per slide');
+  for (const block of links) {
+    assert(!/<a[\s>]/.test(block.replace(/^<a class="hero-slide-link"[^>]*>/, '')), 'no nested anchor');
+    assert(!/<button/.test(block), 'no nested button');
+    assert(block.includes('<h1 class="hero-title">'), 'slide title is a real heading');
+    assert(block.includes('class="btn btn-primary hero-cta"'), 'CTA is a styled span');
+  }
+  assert(/<h1 class="hero-title">/.test(html), 'home exposes an h1');
+  assert(!html.includes('All products'), 'no extra All products CTA');
+  assert(html.includes('data-action="hero-prev"'), 'controls remain outside the slide link');
+});
+
+test('home hero has two equal brand promo cards for Northgate and Larkhill', () => {
+  const ctx = fresh();
+  const html = homeView(ctx.seed, ctx.state, {}, {});
+  eq((html.match(/data-promo="/g) || []).length, 2, 'two promo cards');
+  assert(html.includes('href="#catalog?brand=Northgate"'), 'Northgate brand link');
+  assert(html.includes('href="#catalog?brand=Larkhill"'), 'Larkhill brand link');
+  eq((html.match(/class="hero-promos"/g) || []).length, 1, 'equal promos column');
+});
+
+test('home shows the three latest published articles before the footer', () => {
+  const ctx = fresh();
+  const html = homeView(ctx.seed, ctx.state, {}, {});
+  const slugs = [...html.matchAll(/class="article-card latest-card" href="#journal\?slug=([^"]+)"/g)].map((m) => m[1]);
+  eq(JSON.stringify(slugs), JSON.stringify(['city-gear-guide', 'trailside-repairs', 'gravel-notes']), 'newest first, draft excluded');
+  assert(html.includes('class="article-preview"'), 'body preview present');
+  assert(html.includes('class="article-art"'), 'local article art present');
+  assert(html.includes('datetime="2026-10-01"') && html.includes('1 October 2026'), 'datetime + readable date');
+  assert(html.indexOf('section latest') > html.indexOf('workshop promise'), 'latest section is last before the footer');
+});
+
+test('latest articles sort by date descending with a stable slug tie', () => {
+  const ctx = fresh();
+  eq(formatArticleDate('2026-10-01'), '1 October 2026', 'readable date');
+  eq(formatArticleDate('bad'), '', 'invalid date empty');
+  const order = publishedArticlesByDate(ctx.state).map((a) => a.slug);
+  eq(JSON.stringify(order), JSON.stringify(['city-gear-guide', 'trailside-repairs', 'gravel-notes']), 'newest first, draft excluded');
+  ctx.state.content.articles['trailside-repairs'].publishedAt = '2026-09-18';
+  const tie = publishedArticlesByDate(ctx.state).map((a) => a.slug);
+  eq(JSON.stringify(tie), JSON.stringify(['city-gear-guide', 'gravel-notes', 'trailside-repairs']), 'slug tie-break ascending');
+});
+
+test('latest section hides with no published articles and shows fewer without duplicates', () => {
+  const ctx = fresh();
+  for (const a of Object.values(ctx.state.content.articles)) a.published = false;
+  const none = homeView(ctx.seed, ctx.state, {}, {});
+  assert(!none.includes('section latest'), 'section hidden at zero');
+  assert(!none.includes('From the journal'), 'heading hidden at zero');
+
+  const partial = fresh();
+  partial.state.content.articles['city-gear-guide'].published = false;
+  partial.state.content.articles['trailside-repairs'].published = false;
+  const html = homeView(partial.seed, partial.state, {}, {});
+  eq((html.match(/latest-card/g) || []).length, 1, 'only available published shown');
+  assert(html.includes('gravel-notes'), 'remaining published article shown');
+});
+
+test('legacy content migration adds new fixtures and fills metadata without override', () => {
+  const ctx = fresh();
+  const { order } = deliveryOrder(ctx, 'gravel-01-M-forest', 1);
+  signInCustomer(ctx.state, { email: 'buyer@example.com' });
+  addToWishlist(ctx.state, 'gravel-01');
+  const raw = JSON.parse(serializeState(ctx.state));
+  // Simulate a session saved before the new journal fixtures/metadata existed.
+  delete raw.content.articles['city-gear-guide'];
+  delete raw.content.articles['trailside-repairs'];
+  const legacy = raw.content.articles['gravel-notes'];
+  legacy.title = 'User edited title';
+  legacy.body = 'User edited body that must survive migration.';
+  delete legacy.publishedAt;
+  delete legacy.artVariant;
+  const restored = deserializeState(ctx.seed, JSON.stringify(raw));
+  assert(restored.content.articles['city-gear-guide'], 'new city fixture added');
+  assert(restored.content.articles['trailside-repairs'], 'new trail fixture added');
+  const g = restored.content.articles['gravel-notes'];
+  eq(g.title, 'User edited title', 'edited title preserved');
+  eq(g.body, 'User edited body that must survive migration.', 'edited body preserved');
+  eq(g.published, true, 'publication preserved');
+  eq(g.publishedAt, '2026-09-18', 'missing metadata filled');
+  eq(g.artVariant, 0, 'missing art metadata filled');
+  eq(restored.content.articles['winter-commute'].published, false, 'draft stays draft');
+  eq(restored.orders[order.id].id, order.id, 'order preserved');
+  eq(restored.wishlist.includes('gravel-01'), true, 'wishlist preserved');
+});
+
+
+test('catalogue type filter works for parts subcategories, not only bikes', () => {
+  const ctx = fresh();
+  const brakes = catalogView(ctx.seed, ctx.state, { query: { category: 'parts', type: 'brakes' } });
+  assert(brakes.includes('All-Weather Brake Pads'), 'brakes part shown');
+  assert(!brakes.includes('Fieldnote Gravel Tyre 700x40'), 'other part type excluded');
+  const frames = catalogView(ctx.seed, ctx.state, { query: { category: 'parts', type: 'frames' } });
+  assert(frames.includes('Fieldnote Gravel Frame'), 'frame part shown');
+});
+
+test('cart and checkout are one unified form; the empty cart has no submit', () => {
+  const ctx = fresh();
+  ctx.state.cart.context = { type: 'delivery', storeId: null };
+  addToCart(ctx.state.cart, 'gravel-01-M-forest', 1);
+  const html = cartView(ctx.seed, ctx.state, {});
+  assert(html.includes('data-checkout-form') && html.includes('id="checkout-form"'), 'single unified form');
+  assert(html.includes('form="checkout-form"'), 'submit buttons reference the shared form');
+  assert(html.includes('href="#checkout"'), 'preserved checkout link present');
+  const alias = checkoutView(ctx.seed, ctx.state, {});
+  assert(alias.includes('data-checkout-form'), 'checkout alias uses the same view');
+  const empty = fresh();
+  assert(!cartView(empty.seed, empty.state, {}).includes('data-checkout-form'), 'empty cart has no form/submit');
+});
+
+test('legacy state keeps orders and gains the new frame balances', () => {
+  const ctx = fresh();
+  const order = deliveryOrder(ctx, 'gravel-01-M-forest', 1).order;
+  const raw = JSON.parse(serializeState(ctx.state));
+  // Simulate a session saved before the frame fixtures existed.
+  delete raw.wishlist; delete raw.customer; delete raw.pendingAccess;
+  raw.balances = raw.balances.filter((b) => !String(b.skuId).startsWith('frame-01'));
+  const restored = deserializeState(ctx.seed, JSON.stringify(raw));
+  eq(restored.orders[order.id].id, order.id, 'order preserved');
+  eq(Array.isArray(restored.wishlist), true, 'wishlist defaulted');
+  eq(restored.customer.signedIn, false, 'customer defaulted');
+  const frameRows = restored.balances.filter((b) => String(b.skuId).startsWith('frame-01'));
+  assert(frameRows.length > 0, 'frame balances added for a legacy session');
+  eq(restored.balances.find((b) => b.skuId === 'gravel-01-M-forest' && b.locationId === 'warehouse').qty, 2, 'existing balances untouched');
+});
+
+test('malformed or unknown wishlist ids are filtered safely', () => {
+  const ctx = fresh();
+  const raw = JSON.parse(serializeState(ctx.state));
+  raw.wishlist = ['gravel-01', 'does-not-exist', 42, 'gravel-01'];
+  const restored = deserializeState(ctx.seed, JSON.stringify(raw));
+  eq(JSON.stringify(restored.wishlist), JSON.stringify(['gravel-01']));
+});
+
+// ---------------------------------------------------------------------------
+section('Product/catalog refinements: reviews, migration, multi-select, home4');
+// ---------------------------------------------------------------------------
+
+test('reviews are seeded per model (six on gravel-01) and never per SKU', () => {
+  const ctx = fresh();
+  eq(reviewsForModel(ctx.state, 'gravel-01').length, 6, 'six seeded gravel-01 reviews');
+  // Every gravel-01 SKU shares the same model-level summary.
+  const all = reviewSummary(ctx.state, 'gravel-01');
+  eq(all.count, 6, 'model-level count');
+  eq(all.average, 4.3, 'average across all reviews');
+  eq(reviewSummary(ctx.state, 'gravel-01').average, reviewSummary(ctx.state, 'gravel-01').average, 'stable');
+});
+
+test('review aggregation covers ALL reviews, not the current page', () => {
+  const ctx = fresh();
+  const page = reviewPage(ctx.state, 'gravel-01', 1, 5);
+  eq(page.items.length, 5, 'five per page');
+  eq(page.pageCount, 2, 'two pages of six');
+  eq(page.total, 6, 'total across pages');
+  const second = reviewPage(ctx.state, 'gravel-01', 2, 5);
+  eq(second.page, 2, 'second page');
+  eq(second.items.length, 1, 'one left on page two');
+  const summary = reviewSummary(ctx.state, 'gravel-01');
+  eq(summary.count, 6, 'aggregate uses all six, not five');
+});
+
+test('submission is validated: signed-in, integer 1..5, non-empty title', () => {
+  const ctx = fresh();
+  eq(createProductReview(ctx.state, { modelId: 'gravel-01', rating: 5, title: 'Great' }).ok, false, 'guest rejected');
+  eq(createProductReview(ctx.state, { modelId: 'gravel-01', rating: 5, title: 'Great' }).reason, 'not_signed_in');
+  signInCustomer(ctx.state, { email: 'buyer@example.com', name: 'Demo Buyer' });
+  eq(createProductReview(ctx.state, { modelId: 'gravel-01', rating: 6, title: 'x' }).reason, 'invalid_rating');
+  eq(createProductReview(ctx.state, { modelId: 'gravel-01', rating: 2.5, title: 'x' }).reason, 'invalid_rating');
+  eq(createProductReview(ctx.state, { modelId: 'gravel-01', rating: 4, title: '   ' }).reason, 'title_required');
+  const ok = createProductReview(ctx.state, { modelId: 'gravel-01', rating: 4, title: '  Fine bike  ' });
+  eq(ok.ok, true, 'valid review accepted');
+  eq(ok.review.title, 'Fine bike', 'title trimmed');
+  eq(ok.review.modelId, 'gravel-01', 'stored on the model');
+  eq(reviewSummary(ctx.state, 'gravel-01').count, 7, 'aggregate updates');
+  // A review about gravel-01 never leaks into another model's rating.
+  eq(reviewSummary(ctx.state, 'road-01').count, 1, 'other model untouched');
+});
+
+test('a submitted review persists through serialize/deserialize', () => {
+  const ctx = fresh();
+  signInCustomer(ctx.state, { email: 'buyer@example.com' });
+  createProductReview(ctx.state, { modelId: 'mtb-01', rating: 5, title: 'Persisted', description: 'Kept.' });
+  const restored = deserializeState(ctx.seed, serializeState(ctx.state));
+  const found = reviewsForModel(restored, 'mtb-01').find((r) => r.title === 'Persisted');
+  assert(found, 'submitted review survives reload');
+  eq(found.rating, 5, 'rating kept');
+});
+
+test('malformed legacy reviews are filtered before aggregation; valid ones kept', () => {
+  const ctx = fresh();
+  const raw = JSON.parse(serializeState(ctx.state));
+  raw.reviews.push({ id: 'bad-1', modelId: 'gravel-01', rating: 'nope', title: 'x', createdAt: '2026-01-01' });
+  raw.reviews.push({ id: 'bad-2', modelId: 'gravel-01', rating: 9, title: 'x', createdAt: '2026-01-01' });
+  raw.reviews.push({ id: 'bad-3', modelId: 'gravel-01', rating: 3, title: '   ', createdAt: '2026-01-01' });
+  raw.reviews.push({ id: 'bad-4', modelId: 'ghost-model', rating: 3, title: 'x', createdAt: '2026-01-01' });
+  raw.reviews.push({ id: 'custom-ok', modelId: 'gravel-01', rating: 2, title: '  Custom kept  ', createdAt: 'nonsense-date' });
+  const restored = deserializeState(ctx.seed, JSON.stringify(raw));
+  const ids = restored.reviews.map((r) => r.id);
+  assert(!ids.includes('bad-1') && !ids.includes('bad-2') && !ids.includes('bad-3') && !ids.includes('bad-4'), 'malformed dropped');
+  const custom = restored.reviews.find((r) => r.id === 'custom-ok');
+  assert(custom, 'valid custom review preserved (not overwritten)');
+  eq(custom.title, 'Custom kept', 'title trimmed');
+  eq(custom.createdAt, '', 'unreasonable date neutralised');
+  const summary = reviewSummary(restored, 'gravel-01');
+  assert(Number.isFinite(summary.average) && summary.average > 0, 'no NaN average');
+  eq(summary.count, 7, 'six demo + one custom');
+});
+
+test('legacy sessions gain demo reviews without duplicates', () => {
+  const ctx = fresh();
+  const raw = JSON.parse(serializeState(ctx.state));
+  raw.reviews = []; // pretend a session predating reviews
+  const restored = deserializeState(ctx.seed, JSON.stringify(raw));
+  eq(reviewsForModel(restored, 'gravel-01').length, 6, 'demo reviews added once');
+  const again = deserializeState(ctx.seed, serializeState(restored));
+  eq(reviewsForModel(again, 'gravel-01').length, 6, 'no duplication on the next load');
+});
+
+test('checkbox filters OR within a group and AND across groups', () => {
+  const ctx = fresh();
+  const brands = filterModels(ctx.seed, ctx.state, { brand: ['Northgate', 'Larkhill'] }, { type: 'delivery' });
+  const ids = brands.results.map((r) => r.model.id);
+  assert(ids.includes('road-01') && ids.includes('hybrid-01'), 'union of two brands');
+  assert(!ids.includes('gravel-01'), 'unselected brand excluded');
+  const brakes = filterModels(ctx.seed, ctx.state, { brand: ['Northgate'], type: ['brakes'] }, { type: 'delivery' });
+  eq(brakes.results.length, 1, 'AND across groups');
+  eq(brakes.results[0].model.id, 'brake-01');
+  const parts = filterModels(ctx.seed, ctx.state, { type: ['brakes', 'tyres'] }, { type: 'delivery' });
+  const partIds = parts.results.map((r) => r.model.id);
+  assert(partIds.includes('brake-01') && partIds.includes('tyre-01'), 'OR within type');
+});
+
+test('multi-value filters keep the one-SKU conjunction and legacy scalars', () => {
+  const ctx = fresh();
+  // M frame (height 175) AND max 120000 must still be met by ONE SKU.
+  const conj = filterModels(ctx.seed, ctx.state, { frameSize: ['M'], priceMax: 120000 }, { type: 'delivery' });
+  const gravel = conj.results.find((r) => r.model.id === 'gravel-01');
+  assert(gravel, 'gravel included');
+  eq(gravel.fromPrice, 119500, 'single matching M SKU');
+  eq(gravel.matchCount, 1, 'conjunction on one SKU');
+  // A legacy scalar still behaves exactly like a one-item list.
+  const scalar = filterModels(ctx.seed, ctx.state, { brand: 'Northgate' }, { type: 'delivery' });
+  const list = filterModels(ctx.seed, ctx.state, { brand: ['Northgate'] }, { type: 'delivery' });
+  eq(scalar.modelCount, list.modelCount, 'scalar equals one-value list');
+});
+
+test('home product sections use the four-column class; featured default has four', () => {
+  const ctx = fresh();
+  const featured = curationModels(ctx.seed, ctx.state, 'featured');
+  eq(featured.length, 4, 'four featured models (existing assortment only)');
+  assert(featured.every((m) => m.published), 'all published');
+  const html = homeView(ctx.seed, ctx.state, {}, {});
+  assert(html.includes('grid grid-products home-products'), 'home grid carries the four-column class');
+  eq((html.match(/data-model="/g) || []).length >= 4, true, 'at least four cards rendered');
+});
+
+test('the reduced home curation stays honest (only discounted SKUs, not padded)', () => {
+  const ctx = fresh();
+  const sale = curationModels(ctx.seed, ctx.state, 'sale');
+  eq(sale.length, 2, 'not padded to four');
+  for (const m of sale) {
+    assert(skusForModel(ctx.seed, m.id).some((s) => s.regularGross > s.priceGross), m.id + ' actually has a reduced SKU');
+  }
+});
+
+test('catalog renders checkbox groups with counts, Show more and a separate heart', () => {
+  const ctx = fresh();
+  const html = catalogView(ctx.seed, ctx.state, {}, {});
+  assert(html.includes('type="checkbox" name="category"'), 'category checkbox group');
+  assert(html.includes('type="checkbox" name="brand"'), 'brand checkbox group');
+  assert(html.includes('type="checkbox" name="frameSize"'), 'frame size checkbox group');
+  assert(html.includes('class="filter-more"') && html.includes('Show more'), 'Show more disclosure');
+  assert(html.includes('class="check-count"'), 'model counts beside values');
+  assert(/id="c-price"[^>]*type="number"/.test(html), 'max price is a numeric input, not a select');
+  assert(html.includes('Max price (&pound;)'), 'price labelled in GBP');
+  assert(!/name="priceMax"[^>]*<option/.test(html), 'no price dropdown in the catalogue');
+  // The heart is a sibling of the product link, never nested inside it.
+  assert(/<a[^>]*class="product-art product-link"[^>]*>[\s\S]*?<\/a>\s*<button[^>]*data-action="wishlist-toggle"/.test(html), 'heart separate from the anchor');
+  assert(!/<a[^>]*class="product-art product-link"[^>]*>(?:(?!<\/a>)[\s\S])*<button/.test(html), 'no button inside the product anchor');
+});
+
+test('catalog heart marks saved models without a nested control', () => {
+  const ctx = fresh();
+  signInCustomer(ctx.state, { email: 'buyer@example.com' });
+  addToWishlist(ctx.state, 'gravel-01');
+  const html = catalogView(ctx.seed, ctx.state, {}, {});
+  assert(/data-model="gravel-01"[^>]*aria-pressed="true"/.test(html) || html.includes('wishlist-heart is-saved'), 'saved heart state');
+});
+
+test('gallery views are distinct per model and single-view models have no pager', () => {
+  const ctx = fresh();
+  const bike = galleryViews(ctx.seed.models.find((m) => m.id === 'gravel-01'), 'Forest');
+  eq(bike.length, 3, 'three bike views');
+  eq(new Set(bike.map((v) => v.svg)).size, 3, 'views are genuinely different');
+  const part = galleryViews(ctx.seed.models.find((m) => m.id === 'tyre-01'), 'Black');
+  eq(part.length, 1, 'single view for a part');
+  const bikeHtml = productView(ctx.seed, ctx.state, { id: 'gravel-01' }, {});
+  assert(bikeHtml.includes('data-action="open-gallery"'), 'bike opens the large dialog');
+  eq((bikeHtml.match(/class="gallery-thumb[" ]/g) || []).length, 3, 'three thumbnails');
+  const partHtml = productView(ctx.seed, ctx.state, { id: 'tyre-01' }, {});
+  assert(partHtml.includes('data-action="open-gallery"'), 'single image still opens larger');
+  eq((partHtml.match(/class="gallery-thumb[" ]/g) || []).length, 0, 'no pointless thumbnails');
+  const single = galleryDialogView(ctx.seed, ctx.state, {}, { modelId: 'tyre-01', index: 0 });
+  assert(!single.includes('gallery-dialog-controls'), 'single-view dialog has no pager');
+  const multi = galleryDialogView(ctx.seed, ctx.state, {}, { modelId: 'gravel-01', index: 1 });
+  assert(multi.includes('gallery-dialog-controls') && multi.includes('2 / 3'), 'multi-view dialog pages');
+});
+
+test('product page shows model rating, tabs, no quantity and a size list where available', () => {
+  const ctx = fresh();
+  const html = productView(ctx.seed, ctx.state, { id: 'gravel-01' }, {});
+  assert(html.includes('(4.3) - 6 Ratings'), 'rating shows (average) - count');
+  assert(html.includes('role="tablist"') && html.includes('data-action="product-tab"'), 'four tabs with controls');
+  for (const t of ['description', 'specifications', 'reviews', 'manufacturer']) assert(html.includes('data-tab="' + t + '"'), 'tab ' + t);
+  assert(!html.includes('id="p-qty"'), 'no quantity control on the product card');
+  assert(html.includes('Add to cart adds one unit'), 'adds one unit note');
+  // A non-bike garment lists its real available sizes without inventing a chart.
+  const jersey = productView(ctx.seed, ctx.state, { id: 'jersey-01' }, {});
+  assert(jersey.includes('Available in S, M, L'), 'available size list for clothing');
+  assert(!jersey.includes('Frame size guide'), 'no invented chart for clothing');
+});
+
+test('wishlist success dialog uses the exact Russian copy and two actions', () => {
+  const ctx = fresh();
+  const html = wishlistDialogView(ctx.seed, ctx.state, {}, { modelId: 'gravel-01' });
+  assert(html.includes('Товар добавлен в избранное'), 'exact title');
+  assert(html.includes('перейти в избранное') && html.includes('data-action="wishlist-go"'), 'first action');
+  assert(html.includes('продолжить покупки') && html.includes('data-action="wishlist-continue"'), 'second action');
+  assert(html.includes('data-action="wishlist-dialog-close"'), 'close control');
+});
+
+test('review dialog offers sign-in to guests and the form to signed-in customers', () => {
+  const ctx = fresh();
+  const guest = reviewDialogView(ctx.seed, ctx.state, {}, { modelId: 'gravel-01' });
+  assert(guest.includes('Sign in to review') && guest.includes('data-action="open-auth"'), 'guest sign-in path');
+  assert(!guest.includes('data-review-form'), 'guest cannot submit directly');
+  signInCustomer(ctx.state, { email: 'buyer@example.com' });
+  const signed = reviewDialogView(ctx.seed, ctx.state, {}, { modelId: 'gravel-01', rating: 4, title: 'Draft' });
+  assert(signed.includes('data-review-form'), 'form for signed-in');
+  assert(signed.includes('id="rev-rating"') && signed.includes('id="rev-title"') && signed.includes('id="rev-desc"'), 'rating, required title, optional description');
+  assert(signed.includes('value="Draft"'), 'draft preserved');
 });
 
 // ---------------------------------------------------------------------------

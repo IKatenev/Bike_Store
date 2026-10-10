@@ -194,6 +194,16 @@ export function createSeed() {
       type: 'jackets', wheels: null, published: false,
       description: 'Unpublished demo jacket kept out of the storefront to demonstrate publication rules.',
       specs: [{ label: 'Waterproofing', value: 'Demo 10k' }]
+    },
+    {
+      id: 'frame-01', name: 'Fieldnote Gravel Frame', brand: 'PEDAL & FIELD', categoryId: 'parts',
+      type: 'frames', wheels: null, published: true, sizeChart: null,
+      description: 'A replacement steel gravel frameset sharing the Fieldnote family name. This demonstrates a part recommended by name similarity; compatibility with any complete bike is not checked or promised.',
+      specs: [
+        { label: 'Material', value: 'Butted chromoly steel' },
+        { label: 'Mounts', value: 'Rack and mudguard mounts' },
+        { label: 'Fits', value: '700c wheels, disc brakes' }
+      ]
     }
   ];
 
@@ -226,6 +236,9 @@ export function createSeed() {
     // Parts
     sku({ id: 'tyre-01-one', modelId: 'tyre-01', skuCode: 'PF-TYR-7040', colour: 'Black', size: '700x40', priceGross: 4500, shippingClassId: 'standard' }),
     sku({ id: 'brake-01-one', modelId: 'brake-01', skuCode: 'NG-BRK-PAIR', colour: 'Black', size: 'Pair', priceGross: 2200, shippingClassId: 'standard' }),
+    // Fieldnote Gravel Frame (frame-01) - a part sharing the Fieldnote Gravel name
+    sku({ id: 'frame-01-54-ink', modelId: 'frame-01', skuCode: 'PF-FRME-INK-54', colour: 'Ink', size: '54', priceGross: 39900, shippingClassId: 'standard' }),
+    sku({ id: 'frame-01-56-forest', modelId: 'frame-01', skuCode: 'PF-FRME-FRST-56', colour: 'Forest', size: '56', priceGross: 39900, shippingClassId: 'standard' }),
     // Accessories
     sku({ id: 'helmet-01-S', modelId: 'helmet-01', skuCode: 'LH-HLM-S', colour: 'Sand', size: 'S', priceGross: 6500, shippingClassId: 'standard' }),
     sku({ id: 'helmet-01-M', modelId: 'helmet-01', skuCode: 'LH-HLM-M', colour: 'Sand', size: 'M', priceGross: 6500, shippingClassId: 'standard' }),
@@ -270,6 +283,8 @@ export function createSeed() {
     ['tour-01-L-forest', 'warehouse', 2],
     ['tyre-01-one', 'warehouse', 40],
     ['brake-01-one', 'warehouse', 30],
+    ['frame-01-54-ink', 'warehouse', 3],
+    ['frame-01-56-forest', 'warehouse', 2],
     ['helmet-01-S', 'warehouse', 8],
     ['helmet-01-M', 'warehouse', 8],
     ['helmet-01-L', 'warehouse', 6],
@@ -324,24 +339,57 @@ export function createSeed() {
     }
   };
 
+  // Journal fixtures. `publishedAt` (ISO date) and `artVariant` are demo
+  // metadata added for the home "latest articles" cards. `excerpt` is kept only
+  // for the older journal list; home previews use the start of `body`.
   const articles = {
     'gravel-notes': {
-      slug: 'gravel-notes', title: 'Notes from the gravel lanes', published: true,
+      slug: 'gravel-notes',
+      title: 'Notes from the gravel lanes',
+      published: true,
+      publishedAt: '2026-09-18',
+      artVariant: 0,
       excerpt: 'A short draft journal piece about riding mixed surfaces.',
-      body: 'This is a draft journal article for the prototype. It demonstrates a published blog entry visible to customers.'
+      body: 'This is a draft journal article for the prototype. It demonstrates a published blog entry visible to customers. Mixed surfaces reward a calm pace and a little patience, and the lanes around the demo workshop stay quiet well into the morning.'
+    },
+    'city-gear-guide': {
+      slug: 'city-gear-guide',
+      title: 'A city kit that earns its place',
+      published: true,
+      publishedAt: '2026-10-01',
+      artVariant: 1,
+      excerpt: 'Draft notes on the everyday kit we reach for on city rides.',
+      body: 'Fenders, a reliable lock and lights that actually run are the quiet heroes of a city bike. This draft article is illustrative layout copy for the prototype, not real advice or a product claim. It runs long enough to show how four lines of body text are clipped on the home cards.'
+    },
+    'trailside-repairs': {
+      slug: 'trailside-repairs',
+      title: 'Trailside repairs with a simple toolkit',
+      published: true,
+      publishedAt: '2026-09-27',
+      artVariant: 2,
+      excerpt: 'Draft field notes on the tools worth carrying.',
+      body: 'A spare tube, a multi-tool and a couple of zip ties cover most of what a demo trail ride asks for. This draft article demonstrates a published journal entry with local illustrative imagery and a readable publication date. Nothing here is a real maintenance instruction.'
     },
     'winter-commute': {
-      slug: 'winter-commute', title: 'Winter commuting, kept simple', published: false,
+      slug: 'winter-commute',
+      title: 'Winter commuting, kept simple',
+      published: false,
+      publishedAt: '2026-10-05',
+      artVariant: 3,
       excerpt: 'Draft, not yet published.',
       body: 'This draft article is unpublished and must not appear on the storefront.'
     }
   };
 
   // Home curation references ProductModel ids. Only published models render.
+  // `featured` lists four EXISTING published models so the desktop four-column
+  // grid rule (PRO-14) is demonstrated without inventing new assortment. `sale`
+  // stays an honest list of the SKUs that actually carry a reduced price, even
+  // when there are fewer than four of them.
   const curations = {
     featured: {
       id: 'featured', title: 'New and interesting', published: true,
-      modelIds: ['gravel-01', 'ebike-01', 'kids-01']
+      modelIds: ['gravel-01', 'ebike-01', 'kids-01', 'tour-01']
     },
     sale: {
       id: 'sale', title: 'Reduced this month', published: true,
@@ -353,12 +401,27 @@ export function createSeed() {
     }
   };
 
+  // Synthetic, model-level demo reviews. Reviews belong to a ProductModel (never
+  // a SKU) and are shared by all of its variants. gravel-01 carries six so the
+  // five-per-page pagination can be demonstrated. Nothing here is a real review.
+  const reviews = [
+    { id: 'rev-gravel-01-1', modelId: 'gravel-01', rating: 5, title: 'Comfortable all day', description: 'Steel frame soaks up the rough lanes and the mounts are genuinely useful. Demo review.', author: 'Demo rider A', createdAt: '2026-09-02' },
+    { id: 'rev-gravel-01-2', modelId: 'gravel-01', rating: 4, title: 'Great value', description: 'Rides well loaded and the wide clearance is welcome. Tyres are a personal choice.', author: 'Demo rider B', createdAt: '2026-09-06' },
+    { id: 'rev-gravel-01-3', modelId: 'gravel-01', rating: 5, title: 'My everyday bike', description: 'Commutes, towpaths and light trails without complaint. Illustrative demo copy.', author: 'Demo rider C', createdAt: '2026-09-11' },
+    { id: 'rev-gravel-01-4', modelId: 'gravel-01', rating: 3, title: 'Good but heavy', description: 'Steel is lovely to ride but not the lightest. Still a fine demo comparison.', author: 'Demo rider D', createdAt: '2026-09-15' },
+    { id: 'rev-gravel-01-5', modelId: 'gravel-01', rating: 4, title: 'Handles the rough stuff', description: 'Confident on gravel and steady on the road home. Fictional review.', author: 'Demo rider E', createdAt: '2026-09-21' },
+    { id: 'rev-gravel-01-6', modelId: 'gravel-01', rating: 5, title: 'Would buy again', description: 'Everything I wanted from a do-it-all bike. This is a synthetic example.', author: 'Demo rider F', createdAt: '2026-09-28' },
+    { id: 'rev-road-01-1', modelId: 'road-01', rating: 4, title: 'Quick and composed', description: 'Endurance geometry that stays comfortable on long demo rides.', author: 'Demo rider G', createdAt: '2026-09-09' },
+    { id: 'rev-mtb-01-1', modelId: 'mtb-01', rating: 5, title: 'Confident trail ride', description: 'Slack front end and grippy tyres make it a fun demo hardtail.', author: 'Demo rider H', createdAt: '2026-09-13' }
+  ];
+
   return {
     brand: DEMO_BRAND,
     categories,
     brands,
     models,
     skus,
+    reviews,
     taxCategories: TAX_CATEGORIES.map((c) => ({ ...c })),
     shippingClasses: SHIPPING_CLASSES.map((c) => ({ ...c })),
     tariffs: { currency: TARIFFS.currency, base: { ...TARIFFS.base }, extra: { ...TARIFFS.extra } },

@@ -1,0 +1,4 @@
+ M docs/THESAURUS.md
+ M needed-design-changes.md
+?? docs/ai/tasks/bike-store-redesign/
+?? openspec/changes/redesign-bike-store-prototype/

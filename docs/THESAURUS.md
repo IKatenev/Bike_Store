@@ -11,6 +11,7 @@ skill: ubiquitous-language
 
 ## Index
 
+- **Article** `Article` kind:entity
 - **Available Quantity** `AvailableQuantity` kind:value
 - **Cart** `Cart` kind:aggregate
 - **Collection** `Collection` kind:entity
@@ -26,6 +27,7 @@ skill: ubiquitous-language
 - **Payment Attempt** `PaymentAttempt` kind:entity
 - **Payment State** `PaymentState` kind:state
 - **Product Model** `ProductModel` kind:entity
+- **Product Review** `ProductReview` kind:entity
 - **Product Return** `ProductReturn` kind:aggregate
 - **Refund** `Refund` kind:entity
 - **Reservation** `Reservation` kind:aggregate
@@ -39,6 +41,7 @@ skill: ubiquitous-language
 - **Stock Location** `StockLocation` kind:entity
 - **Tax Category** `TaxCategory` kind:value
 - **VAT Snapshot** `VATSnapshot` kind:value
+- **Wishlist** `Wishlist` kind:aggregate
 
 ## Terms
 
@@ -105,6 +108,10 @@ skill: ubiquitous-language
 
 - **Definition**: Карточка модели товара, объединяющая продаваемые варианты SKU.
 
+### Product Review
+
+- **Definition**: Отзыв покупателя о Product Model с оценкой1–5, датой, заголовком и необязательным описанием; общий для всех SKU модели.
+
 ### Product Return
 
 - **Definition**: Возврат физических товаров с приёмкой и проверкой; не денежный возврат.
@@ -156,6 +163,14 @@ skill: ubiquitous-language
 ### VAT Snapshot
 
 - **Definition**: Неизменяемая налоговая разбивка заказа или его корректировки с категориями, ставками, суммами и основанием расчёта.
+
+### Wishlist
+
+- **Definition**: Сохранённые покупателем модели товаров в разделе аккаунта; не корзина, не резерв и не обещание наличия выбранного SKU. В локальном прототипе принадлежит одной демонстрационной persona.
+
+### Article
+
+- **Definition**: Запись блога с содержимым, названием, изображением, датой публикации и состоянием публикации. Последние статьи выбираются по publishedAt; preview — начало body, а не самостоятельный рекламный excerpt.
 
 ## Forbidden
 
