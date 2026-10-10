@@ -1,0 +1,5 @@
+# Remaining page overflow is the long diagnostics text token
+
+Parent fresh CUA re-test: wrapper is correctly present (div display:block overflow:auto clientWidth259 scroll344; table display:table). Still page scrollWidth385 on both S-03 at360. Screenshot shows the Email diagnostics paragraph's unbroken token `placeholder/deadline/extension/dispatch/delivery/refund` running past its panel. My earlier element-bounding-box filter saw table children (correctly clipped now) but missed text overflow outside a paragraph's element box.
+
+Fix the text wrapping in this diagnostics paragraph (e.g. appropriate class with overflow-wrap:anywhere, or readable copy with spaces after separators; normal wrapping, no hiding). Could use ordinary sentence “code placeholder, deadline, extension, dispatch, delivery and refund” which avoids the unbreakable token and is better copy. Keep the proper table wrapper. Parent will repeat actual page width/screenshot; do not invoke browser tools. Record revised cause/evidence. This is within staff.mjs already authorized, no broad edits needed. Make this final small fix together with correction-04 before completing.

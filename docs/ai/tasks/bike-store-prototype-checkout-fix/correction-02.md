@@ -1,0 +1,3 @@
+# Associate the S-04 return controls with their visible labels
+
+Sol scanned main input/select/textarea labels across all 31 Guide links. Only #staff/returns has unassociated controls: each return-card uses <label>Line</label><select name="skuId"> and <label>Quantity to accept</label><input name="qty"> without wrapping/for/id. Add prototype/staff.mjs to the allowed scope solely to associate these labels/controls with unique IDs derived from escaped order.id (multiple return cards). No broader refactor. Preserve field names and handlers. Parent repeats the DOM scan. Record this in both correction-task journals. Other tested forms already have associated labels.

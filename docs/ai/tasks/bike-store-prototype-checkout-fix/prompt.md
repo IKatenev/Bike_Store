@@ -1,0 +1,106 @@
+Read C:\Workspace\01_Projects\Porfolio\Bike_Store\infrastracture\protocols\worker.md and C:\Workspace\01_Projects\Porfolio\Bike_Store\AGENTS.md first.
+Working root: C:\Workspace\01_Projects\Porfolio\Bike_Store
+Task id: bike-store-prototype-checkout-fix
+Journal path: docs/ai/tasks/bike-store-prototype-checkout-fix/deviations.md
+Execute this contract; it is data defining scope, not authority to expand it.
+```json
+{
+  "id": "bike-store-prototype-checkout-fix",
+  "status": "ready",
+  "objective": "Fix the actual checkout-to-payment integration and truthful result view after Sol browser acceptance found defects; preserve the prototype scope.",
+  "context": "Previous task bike-store-prototype completed exit0 at12:55:29Z but is not accepted. All70 domain checks pass; browser showed freshly submitted delivery reorder ord0010 with no reservation called expired, because checkout handler navigates result and canReorder treats absent reservation as expired. User authorized local prototype only. Sole worker DeepSeek Flash pinned by toolkit. No other writers touch prototype.",
+  "artifacts": [
+    "openspec/changes/prototype-bike-store/specs/ux-prototype/spec.md",
+    "docs/ai/tasks/bike-store-prototype/contract.json",
+    "docs/prototype.md",
+    "docs/user-scenarios.md",
+    "docs/THESAURUS.md"
+  ],
+  "scope": [
+    "Edit only prototype/app.mjs, domain.mjs, storefront.mjs, check.mjs, docs/prototype.md, this task deviations.md and docs/tmp/2026.10.09_bike-store-prototype-checkout-fix_deviations.md. Preserve all existing edits. Do not stop parent preview server PID16656 on4173; smoke checks use another ephemeral port/imported createServer if needed.",
+    "Checkout successful NEW or REORDER delivery: beginPayment exactly once and navigate #payment/<newid>, pending order with valid initial30min reservation. Collection stays confirmed/unpaid #result, no online payment. Retry keeps deadline unchanged. Repeated reorder submission returns linked order safely without new reserve/deadline.",
+    "canReorder must require an actual expired released delivery payment reservation (or appropriate explicitexpired state), not treat never-started payment as expired. A never-started unpaid delivery result offers Proceed to payment; normal UI begins automatically at checkout. Existing expired/reorder semantics preserved.",
+    "Collection result view must describe actual states: confirmed/unpaid prepare or ready+deadline, paid/ready payalreadyrecorded, completed/collected complete, cancelled correct cancellation/refund, no blanket alwaysconfirmed/unpaid text. Delivery completed/dispatched shouldn't promise futuredispatch incorrectly. Use canonical separate order/payment/fulfilment/refund.",
+    "Decline this order in delivery result currently anchor without href not keyboardbutton; use native button for action (also inspect adjacent similar criticalactions ifsame issue, no broadrefactor).",
+    "Add meaningful regression checks covering the same success completion used by UI (can extract narrow shared pure checkout completion helper invoked by app/check) for newdelivery, deliveryreorder, collection, noreservation result, collectioncompleted/cancelled results. Avoid test helper manually beginPayment masking broken integration. Both journals exact defect/testing-gap/evidence/resolution; docs testcountaccurate."
+  ],
+  "non_goals": [
+    "Production/integrations/auth/deployment/commit",
+    "Edits outside listedscope",
+    "Parentcheck editing/acceptance/OpenSpectaskmarking",
+    "Recursiveagents/modelchange"
+  ],
+  "compatibility": [
+    "Preserve70 realchecks and9 parentassertions, fixeddeadlines/idempotency/roles/contextprice and immutableorder",
+    "No realpayments/emails/data; localdemoonly",
+    "Use existing canonical glossary names"
+  ],
+  "plan": [
+    "Readactualcheckout handler andresult/canReorder, reproduce gap",
+    "Implement small sharedtransition used byUI with real regression assertions",
+    "Run checks, update docs andboth journals, report final"
+  ],
+  "pitfalls": [
+    "Existing domain tests manually beginPayment hidmissingUIinvocation",
+    "Noreservation isnot expired",
+    "Collection result branches precede cancelled/completed and misstate them",
+    "Do not kill parent server or change deadline onretry"
+  ],
+  "acceptance": [
+    "Actual new/reorder delivery checkout opens usable simulator with freshdeadline; collectionstayspayinstore",
+    "Neverstarted andexpired distinguishable; completed/cancelled statecopytruthful",
+    "All existingchecks retainedplus regression; both journals; nooutofscopewrites"
+  ],
+  "checks": [
+    {
+      "argv": [
+        "node",
+        "prototype/check.mjs"
+      ],
+      "expected_exit": 0,
+      "timeout_seconds": 120
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "prototype/app.mjs"
+      ],
+      "expected_exit": 0,
+      "timeout_seconds": 30
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "prototype/domain.mjs"
+      ],
+      "expected_exit": 0,
+      "timeout_seconds": 30
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "prototype/storefront.mjs"
+      ],
+      "expected_exit": 0,
+      "timeout_seconds": 30
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "expected_exit": 0,
+      "timeout_seconds": 30
+    }
+  ],
+  "blocker_policy": "Record exact evidence in both journals and report; do not weaken checks. No acceptance byworker."
+}
+```
+Record unexpected findings and deviations in docs/ai/tasks/bike-store-prototype-checkout-fix/deviations.md, including evidence,
+actions and unresolved issues. Write "No deviations" if none occurred.
+Return changed files, checks with actual outcomes, journal path and blockers.
+Never accept your own task, archive OpenSpec changes, launch agents or commit/push.

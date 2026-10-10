@@ -2,6 +2,16 @@
 
 Дата: 7 октября 2026 года.
 
+Дополнительная проверка 9 октября 2026 года — только механизм изображений:
+
+- [Payload Uploads](https://payloadcms.com/docs/upload/overview): штатные imageSizes,
+  Sharp/formatOptions и объектное хранение через storage-адаптер; приложение ещё не настроено.
+- [Next.js Image](https://nextjs.org/docs/app/api-reference/components/image): адаптивная
+  выдача, WebP/формат по Accept и кэш преобразования; рассмотрено как альтернатива.
+
+Базовый выбор и условия проверки — в design активного change. Это не повторная
+проверка всех прежних внешних источников и не доказательство production-производительности.
+
 ## Локальные источники
 
 - [AGENTS.md](../../AGENTS.md): маршрутизация инструкции, Sol/OpenCode/DeepSeek.

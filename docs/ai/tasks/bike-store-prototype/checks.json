@@ -1,0 +1,64 @@
+{
+  "checked_at": "2026-10-09T13:22:03.691881+00:00",
+  "checks": [
+    {
+      "argv": [
+        "node",
+        "prototype/check.mjs"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stdout": "\nCorrection 1: shipping = max BASE + all configured quantity surcharges\n  ok   2 bicycles + 2 oversized = 3995 (1995 + 1500 + 500)\n  ok   single standard parcel = base only\n  ok   two standard parcels: surcharge 0\n  ok   excluded region blocks delivery\n  ok   unconfigured region blocks delivery\n  ok   missing base config blocks rather than giving zero\n  ok   missing quantity config blocks rather than omitting a class\n\nCorrection 2: Europe/London collection deadlines (DST-aware)\n  ok   Monday ready -> end of Thursday, Europe/London\n  ok   spring DST span is 71h, not a fixed 72h\n  ok   autumn DST span is 73h\n  ok   repeat ready does not shift the deadline\n  ok   extension once, before expiry, max 3 calendar days from original end\n  ok   extension rejected after expiry\n\nCorrection 3: two-phase reorder\n  ok   startReorder cancels/preserves old and creates no Order or reservation\n  ok   submitReorder creates exactly one linked new Order\n  ok   repeated start returns the same draft; repeated submit returns the same Order\n  ok   changed price is surfaced on reorder, never silently substituted\n  ok   unavailable SKU fails revalidation: old stays cancelled, no new Order\n  ok   accepted-payment race becomes a cancellation request, not silent cancellation\n\nCorrection 4: payment simulator truthfulness\n  ok   failed/pending on a cancelled order never fabricates a refund\n  ok   successful paid on a cancelled order creates one full refund, pending\n  ok   repeated paid on cancelled reuses the same refund (no duplicate)\n  ok   collection rejects the online payment simulator\n  ok   repeated paid on a confirmed order is idempotent\n  ok   paid dispatched/delivered order is not changed by a repeated paid event\n\nCorrection 5: collection operations\n  ok   collection order is confirmed and unpaid on creation\n  ok   markReady rejects cancelled/completed\n  ok   recordCollectionPayment rejects short amount and non-collection\n  ok   collect requires ready + full payment + code; payment stays separate\n  ok   expired unpaid collection is cancelled and released once\n\nCorrection 6: guest session vs verified history\n  ok   guest UI exposes only the current Order of the session\n  ok   verification reveals history for the mock persona only\n  ok   clearing the guest session requires email proof; guide can select an order\n\nCorrection 7: stock adjustment and return guards\n  ok   stock adjustment rejects a drop below reserved amount\n  ok   stock adjustment allowed down to the reserved floor\n  ok   restock cannot exceed purchased or repeat beyond accepted, and uses saved location\n  ok   refund is refused without received money\n  ok   refund does not restock (paid order)\n  ok   refund pending never says money returned; succeeded does\n  ok   accepted cancellation of an unpaid order creates no refund\n  ok   accepted cancellation of a paid order preserves order and opens a refund\n\nFiltering, counting, pricing\n  ok   models are counted once and from-price uses matching variants\n  ok   all filters must match one SKU\n  ok   a model is excluded when no single SKU meets every filter\n  ok   no size chart means no guessed size\n  ok   search by name, SKU and agreed typo sample\n\nCart, context retention, snapshots\n  ok   invalid quantities are rejected\n  ok   context change retains unavailable rows and flags them\n  ok   order snapshot is immutable to later context and price changes\n  ok   retry keeps the original deadline; expiry then revalidates\n  ok   pending order has no reservation until payment starts\n\nRoles, content, curations, escaping, server safety\n  ok   Manager cannot reach catalogue/locations/accounts even by direct route\n  ok   curation excludes unpublished models and hides when empty\n  ok   unpublished articles are hidden from the storefront\n  ok   user text is escaped\n  ok   server path resolution blocks traversal and serves known files\n  ok   GBP formatting is stable\n\nIntegration: persistence, reorder-with-fixes, rendering, scenarios\n  ok   state round-trips through serialize/deserialize (cart preserved)\n  ok   malformed JSON and wrong shapes fall back to a fresh state\n  ok   submitReorder respects current cart fixes and revalidates\n  ok   reorderChanges reflects a removed row before consent\n  ok   staff order and product editors render with real ids\n  ok   payment/result/order views render with real ids\n  ok   seedDemoScenarios builds every agreed state and preserves the session\n  ok   CAT-05 From price prefers variants available in the chosen context\n  ok   CAT-05 From price updates after collection consumes the last unit\n  ok   home price summary uses the same available-first rule\n  ok   catalogue sorts by the shown (context) price\n  ok   catalogue keeps price/height/frame filters when refining (Apply does not drop them)\n  ok   collection staff page hides payment/handover once completed or cancelled\n\nCheckout integration: shared completion + truthful result view\n  ok   completeCheckout: new delivery starts payment exactly once with a fresh 30-minute reservation\n  ok   completeCheckout: collection stays confirmed/unpaid on the result screen, no online payment\n  ok   completeCheckout: reorder links a new order; repeated submit reuses the same reservation/deadline\n  ok   result view distinguishes a never-started payment from an expired reservation\n  ok   result view offers reorder for an actually expired reservation\n  ok   result view describes collection paid/completed/cancelled states truthfully\n  ok   result view does not promise a future dispatch once dispatched/delivered\n  ok   decline action in the result view is a native button, not a hrefless anchor\n  ok   S-04 return controls are associated with their visible labels\n  ok   cart render: a fresh delivery cart with an available item allows checkout before an address\n  ok   cart render: a retained unavailable row still blocks whole-cart checkout\n  ok   Items tables use a block scroll wrapper (staff and guest order views)\n  ok   styles.css keeps the scroll-wrapper override for wrapped tables\n  ok   staff order diagnostics copy has no unbreakable separator token\n\n84 passed, 0 failed\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "prototype/app.mjs"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "prototype/domain.mjs"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "prototype/serve.mjs"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stdout": "",
+      "stderr": ""
+    }
+  ]
+}

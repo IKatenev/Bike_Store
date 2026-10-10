@@ -1,0 +1,20 @@
+ M docs/README.md
+ M docs/THESAURUS.md
+ M docs/ai/OPEN-QUESTIONS.md
+ M docs/ai/PROGRESS.md
+ M docs/ai/PROJECT-CONTEXT.md
+ M docs/ai/SOURCES.md
+ M docs/ai/TRACEABILITY.md
+ M docs/ai/UX-OPEN-QUESTIONS.md
+ M docs/ai/decisions/001-mvp-baseline.md
+ M docs/user-scenarios.md
+ M openspec/changes/define-bike-store-mvp/design.md
+ M openspec/changes/define-bike-store-mvp/proposal.md
+ M openspec/changes/define-bike-store-mvp/specs/administration/spec.md
+ M openspec/changes/define-bike-store-mvp/specs/catalog/spec.md
+ M openspec/changes/define-bike-store-mvp/specs/content-notifications/spec.md
+ M openspec/changes/define-bike-store-mvp/specs/storefront-quality/spec.md
+ M openspec/changes/define-bike-store-mvp/tasks.md
+ M solutions.md
+?? docs/ai/tasks/
+?? openspec/changes/prototype-bike-store/

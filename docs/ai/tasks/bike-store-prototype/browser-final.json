@@ -1,0 +1,85 @@
+{
+  "source": "Sol independent CUA browser acceptance",
+  "responsive": [
+    {
+      "route": "#staff/order/ord-0006",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "route": "#staff/order/ord-0008",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "route": "#order/ord-0001",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "route": "#staff/order/ord-0006",
+      "scrollWidth": 375,
+      "width": 390
+    },
+    {
+      "route": "#staff/order/ord-0008",
+      "scrollWidth": 375,
+      "width": 390
+    },
+    {
+      "route": "#order/ord-0001",
+      "scrollWidth": 375,
+      "width": 390
+    },
+    {
+      "route": "#staff/order/ord-0006",
+      "scrollWidth": 753,
+      "width": 768
+    },
+    {
+      "route": "#staff/order/ord-0008",
+      "scrollWidth": 753,
+      "width": 768
+    },
+    {
+      "route": "#order/ord-0001",
+      "scrollWidth": 753,
+      "width": 768
+    },
+    {
+      "route": "#staff/order/ord-0006",
+      "scrollWidth": 1425,
+      "width": 1440
+    },
+    {
+      "route": "#staff/order/ord-0008",
+      "scrollWidth": 1425,
+      "width": 1440
+    },
+    {
+      "route": "#order/ord-0001",
+      "scrollWidth": 1425,
+      "width": 1440
+    }
+  ],
+  "flows": [
+    {
+      "scenario": "Fresh delivery via Add to cart and Proceed to checkout",
+      "route": "http://127.0.0.1:4173/#payment/ord-0010",
+      "visible": "Payment simulator\n\nSimulator only. No card fields, no real payment provider and no network calls. A return to the site never confirms payment by itself.\n\nOrder ord-0010 for £1314.95 (VAT included).\n\nReservation: held until 9 Oct 2026, 14:43 (Europe/London; fixed original 30-minute deadline).\n\nSimulate successful payment Simulate bank refusal Simulate pending\n\nBack to order result"
+    },
+    {
+      "scenario": "Expired reorder through actual checkout submit",
+      "route": "http://127.0.0.1:4173/#payment/ord-0011",
+      "visible": "Payment simulator\n\nSimulator only. No card fields, no real payment provider and no network calls. A return to the site never confirms payment by itself.\n\nOrder ord-0011 for £1909.95 (VAT included).\n\nReservation: held until 9 Oct 2026, 14:43 (Europe/London; fixed original 30-minute deadline).\n\nSimulate successful payment Simulate bank refusal Simulate pending\n\nBack to order result"
+    },
+    {
+      "scenario": "#result/ord-0007",
+      "visible": "Order result\n\nOrder ord-0007\n\nCollected and complete. Payment was recorded in store; nothing further is due.\n\nView order details\n\nSeparate states\nORDER\ncompleted\nPAYMENT\npaid\nFULFILMENT\ncollected\n\nThese are shown separately, as required. A \"received\" email does not confirm payment.\n\nWhat happens next\n\nTo see your order history, confirm your email at Sign in. Opening a link alone does not grant history in this demo — you must press the confirm button.\n\nNeed to change or stop this order? Use Help with an order."
+    },
+    {
+      "scenario": "#result/ord-0004",
+      "visible": "Order result\n\nOrder ord-0004\n\nThis order is cancelled. A full refund of £49.95 (including delivery) is pending. Money is not yet returned while the refund is pending or failed.\n\nSeparate states\nORDER\ncancelled\nPAYMENT\nrefund_pending\nFULFILMENT\nunfulfilled\n\nThese are shown separately, as required. A \"received\" email does not confirm payment.\n\nWhat happens next\n\nTo see your order history, confirm your email at Sign in. Opening a link alone does not grant history in this demo — you must press the confirm button.\n\nNeed to change or stop this order? Use Help with an order."
+    }
+  ]
+}

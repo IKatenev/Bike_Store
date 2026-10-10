@@ -1,0 +1,410 @@
+{
+  "source": "Sol independent CUA browser acceptance",
+  "desktop": [
+    {
+      "heading": "Bikes and kit for the long way round.",
+      "label": "Home / finder",
+      "notFound": false,
+      "overflow": false,
+      "route": "#home"
+    },
+    {
+      "heading": "Catalogue",
+      "label": "Catalogue / search",
+      "notFound": false,
+      "overflow": false,
+      "route": "#catalog"
+    },
+    {
+      "heading": "Fieldnote Gravel",
+      "label": "Product model / SKU",
+      "notFound": false,
+      "overflow": false,
+      "route": "#product/gravel-01"
+    },
+    {
+      "heading": "Your cart",
+      "label": "Cart",
+      "notFound": false,
+      "overflow": false,
+      "route": "#cart"
+    },
+    {
+      "heading": "Checkout",
+      "label": "Checkout",
+      "notFound": false,
+      "overflow": false,
+      "route": "#checkout"
+    },
+    {
+      "heading": "Sign in to your orders",
+      "label": "Request sign-in link",
+      "notFound": false,
+      "overflow": false,
+      "route": "#sign-in"
+    },
+    {
+      "heading": "Confirm your email",
+      "label": "Confirm email",
+      "notFound": false,
+      "overflow": false,
+      "route": "#verify"
+    },
+    {
+      "heading": "Confirm your email",
+      "label": "Confirm email (invalid link)",
+      "notFound": false,
+      "overflow": false,
+      "route": "#verify?state=invalid"
+    },
+    {
+      "heading": "My orders",
+      "label": "My orders",
+      "notFound": false,
+      "overflow": false,
+      "route": "#orders"
+    },
+    {
+      "heading": "Journal",
+      "label": "Journal list",
+      "notFound": false,
+      "overflow": false,
+      "route": "#journal"
+    },
+    {
+      "heading": "Notes from the gravel lanes",
+      "label": "Journal article",
+      "notFound": false,
+      "overflow": false,
+      "route": "#journal?slug=gravel-notes"
+    },
+    {
+      "heading": "FAQ",
+      "label": "Info page (FAQ)",
+      "notFound": false,
+      "overflow": false,
+      "route": "#page/faq"
+    },
+    {
+      "heading": "Returns",
+      "label": "Info page (Returns)",
+      "notFound": false,
+      "overflow": false,
+      "route": "#page/returns"
+    },
+    {
+      "heading": "Email samples (mock)",
+      "label": "Email samples",
+      "notFound": false,
+      "overflow": false,
+      "route": "#emails"
+    },
+    {
+      "heading": "Staff sign-in",
+      "label": "Staff sign-in",
+      "notFound": false,
+      "overflow": false,
+      "route": "#staff/sign-in"
+    },
+    {
+      "heading": "Network orders",
+      "label": "Network orders",
+      "notFound": false,
+      "overflow": false,
+      "route": "#staff/orders"
+    },
+    {
+      "heading": "Returns and refunds",
+      "label": "Returns / refunds",
+      "notFound": false,
+      "overflow": false,
+      "route": "#staff/returns"
+    },
+    {
+      "heading": "Inventory",
+      "label": "Inventory / restock",
+      "notFound": false,
+      "overflow": false,
+      "route": "#staff/inventory"
+    },
+    {
+      "heading": "Catalogue",
+      "label": "Catalogue admin",
+      "notFound": false,
+      "overflow": false,
+      "route": "#staff/products"
+    },
+    {
+      "heading": "Edit Fieldnote Gravel",
+      "label": "Model / SKU editor",
+      "notFound": false,
+      "overflow": false,
+      "route": "#staff/product/gravel-01"
+    },
+    {
+      "heading": "Locations and tariffs",
+      "label": "Locations / tariffs",
+      "notFound": false,
+      "overflow": false,
+      "route": "#staff/locations"
+    },
+    {
+      "heading": "Staff accounts and rights",
+      "label": "Staff accounts",
+      "notFound": false,
+      "overflow": false,
+      "route": "#staff/accounts"
+    },
+    {
+      "heading": "Content and home curations",
+      "label": "Content editor",
+      "notFound": false,
+      "overflow": false,
+      "route": "#staff/content"
+    },
+    {
+      "heading": "Payment simulator",
+      "label": "Payment simulator (failed)",
+      "notFound": false,
+      "overflow": false,
+      "route": "#payment/ord-0002"
+    },
+    {
+      "heading": "Order result",
+      "label": "Order result (expired / reorder)",
+      "notFound": false,
+      "overflow": false,
+      "route": "#result/ord-0003"
+    },
+    {
+      "heading": "Order result",
+      "label": "Order result (cancelled + refund pending)",
+      "notFound": false,
+      "overflow": false,
+      "route": "#result/ord-0004"
+    },
+    {
+      "heading": "Order ord-0001",
+      "label": "Order details",
+      "notFound": false,
+      "overflow": false,
+      "route": "#order/ord-0001"
+    },
+    {
+      "heading": "Help with order ord-0001",
+      "label": "Help with an order",
+      "notFound": false,
+      "overflow": false,
+      "route": "#help/ord-0001"
+    },
+    {
+      "heading": "Order ord-0006",
+      "label": "Staff: collection ready order",
+      "notFound": false,
+      "overflow": false,
+      "route": "#staff/order/ord-0006"
+    },
+    {
+      "heading": "Order ord-0008",
+      "label": "Staff: dispatched delivery order",
+      "notFound": false,
+      "overflow": false,
+      "route": "#staff/order/ord-0008"
+    },
+    {
+      "heading": "Staff sign-in",
+      "label": "staff sign-in",
+      "notFound": false,
+      "overflow": false,
+      "route": "#staff/sign-in"
+    }
+  ],
+  "mobileBeforeCorrection": [
+    {
+      "heading": "Bikes and kit for the long way round.",
+      "route": "#home",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Catalogue",
+      "route": "#catalog",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Fieldnote Gravel",
+      "route": "#product/gravel-01",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Your cart",
+      "route": "#cart",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Checkout",
+      "route": "#checkout",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Sign in to your orders",
+      "route": "#sign-in",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Confirm your email",
+      "route": "#verify",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Confirm your email",
+      "route": "#verify?state=invalid",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "My orders",
+      "route": "#orders",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Journal",
+      "route": "#journal",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Notes from the gravel lanes",
+      "route": "#journal?slug=gravel-notes",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "FAQ",
+      "route": "#page/faq",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Returns",
+      "route": "#page/returns",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Email samples (mock)",
+      "route": "#emails",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Staff sign-in",
+      "route": "#staff/sign-in",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Network orders",
+      "route": "#staff/orders",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Returns and refunds",
+      "route": "#staff/returns",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Inventory",
+      "route": "#staff/inventory",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Catalogue",
+      "route": "#staff/products",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Edit Fieldnote Gravel",
+      "route": "#staff/product/gravel-01",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Locations and tariffs",
+      "route": "#staff/locations",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Staff accounts and rights",
+      "route": "#staff/accounts",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Content and home curations",
+      "route": "#staff/content",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Payment simulator",
+      "route": "#payment/ord-0002",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Order result",
+      "route": "#result/ord-0003",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Order result",
+      "route": "#result/ord-0004",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Order ord-0001",
+      "route": "#order/ord-0001",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Help with order ord-0001",
+      "route": "#help/ord-0001",
+      "scrollWidth": 345,
+      "width": 360
+    },
+    {
+      "heading": "Order ord-0006",
+      "route": "#staff/order/ord-0006",
+      "scrollWidth": 385,
+      "width": 360
+    },
+    {
+      "heading": "Order ord-0008",
+      "route": "#staff/order/ord-0008",
+      "scrollWidth": 385,
+      "width": 360
+    },
+    {
+      "heading": "Staff sign-in",
+      "route": "#staff/sign-in",
+      "scrollWidth": 345,
+      "width": 360
+    }
+  ]
+}
